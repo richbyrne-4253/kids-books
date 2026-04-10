@@ -1,6 +1,11 @@
 // pages/api/scan.js
 // Accepts a base64 image of a book cover, returns title/author/pages via Claude vision.
 
+export const config = { api: { bodyParser: { sizeLimit: '10mb' } } };
+
+// Anthropic only accepts these image types
+const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
@@ -9,6 +14,12 @@ export default async function handler(req, res) {
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return res.status(500).json({ error: 'ANTHROPIC_API_KEY not set' });
+
+  // Normalise media type — iPhone HEIC and anything unknown → jpeg
+  const safeType = ALLOWED_TYPES.includes(mediaType) ? mediaType : 'image/jpeg';
+
+  // Strip any accidental data URL prefix if present
+  const base64 = image.replace(/^data:[^;]+;base64,/, '');
 
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -27,11 +38,7 @@ export default async function handler(req, res) {
           content: [
             {
               type: 'image',
-              source: {
-                type: 'base64',
-                media_type: mediaType || 'image/jpeg',
-                data: image,
-              },
+              source: { type: 'base64', media_type: safeType, data: base64 },
             },
             {
               type: 'text',
@@ -43,11 +50,11 @@ export default async function handler(req, res) {
     });
 
     const data = await response.json();
-    if (!response.ok) return res.status(500).json({ error: data.error?.message || 'API error' });
+    if (!response.ok) return res.status(500).json({ error: data.error?.message || JSON.stringify(data.error) });
 
     const text = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
     const match = text.replace(/```json|```/g, '').trim().match(/\{[\s\S]*\}/);
-    if (!match) return res.status(500).json({ error: 'Could not parse response' });
+    if (!match) return res.status(500).json({ error: 'Could not parse response: ' + text.slice(0, 100) });
 
     const result = JSON.parse(match[0]);
     if (result.error) return res.status(422).json({ error: result.error });
