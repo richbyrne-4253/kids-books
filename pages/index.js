@@ -22,9 +22,14 @@ function nameToColors(name) {
   return EXTRA_PALETTES[hash % EXTRA_PALETTES.length];
 }
 
-function estimateWords(pages) {
+function autoWpp(pages) {
+  if (!pages) return 200;
+  return pages < 50 ? 150 : pages < 150 ? 200 : 250;
+}
+
+function estimateWords(pages, customWpp) {
   if (!pages) return 0;
-  const wpp = pages < 50 ? 150 : pages < 150 ? 200 : 250;
+  const wpp = customWpp || autoWpp(pages);
   return Math.round(pages * wpp);
 }
 
@@ -58,6 +63,10 @@ function runTests() {
   results.push({ name: 'nameToColors: known name uses COLORS', pass: nameToColors('Alex') === COLORS.Alex });
   results.push({ name: 'nameToColors: unknown name returns palette', pass: !!nameToColors('Dave') && !!nameToColors('Dave').accent });
   results.push({ name: 'nameToColors: deterministic for same name', pass: nameToColors('Zoe').accent === nameToColors('Zoe').accent });
+  results.push({ name: 'estimateWords: custom wpp overrides auto', pass: estimateWords(100, 300) === 30000 });
+  results.push({ name: 'autoWpp: picture book', pass: autoWpp(32) === 150 });
+  results.push({ name: 'autoWpp: chapter book', pass: autoWpp(120) === 200 });
+  results.push({ name: 'autoWpp: novel', pass: autoWpp(300) === 250 });
   results.push({ name: 'Multi-reader: each child gets own entry', pass: (() => {
     const children = ['Alex', 'Hannah'];
     const entries = children.map(child => ({ child, title: 'Test', pages: 100 }));
@@ -84,11 +93,20 @@ export default function Home() {
   const [looking, setLooking] = useState(false);
   const [lookupError, setLookupError] = useState('');
   const [saveError, setSaveError] = useState('');
+  const [wpp, setWpp] = useState('');
+  const [wppEdited, setWppEdited] = useState(false);
   const [bulkProcessing, setBulkProcessing] = useState(false);
   const [bulkProgress, setBulkProgress] = useState(null);
   const [testResults, setTestResults] = useState(null);
 
   useEffect(() => { setBooks(loadBooks()); }, []);
+
+  // Auto-fill WPP when pages changes, unless user has manually set it
+  useEffect(() => {
+    if (!wppEdited && pages && !isNaN(Number(pages)) && Number(pages) > 0) {
+      setWpp(String(autoWpp(Number(pages))));
+    }
+  }, [pages, wppEdited]);
 
   // Derived
   const titleLines = titles.split('\n').map(t => t.trim()).filter(Boolean);
@@ -135,6 +153,7 @@ export default function Home() {
       setTitles(data.title || titles);
       setAuthor(data.author || author);
       setPages(String(data.pages || ''));
+      if (data.pages && !wppEdited) setWpp(String(autoWpp(data.pages)));
     } catch (e) {
       setLookupError(e.message);
     } finally {
@@ -155,13 +174,15 @@ export default function Home() {
     if (!pages || isNaN(Number(pages)) || Number(pages) <= 0) return setSaveError('Enter a valid page count');
 
     const now = Date.now();
+    const effectiveWpp = wpp && !isNaN(Number(wpp)) && Number(wpp) > 0 ? Number(wpp) : undefined;
     const newBooks = selectedChildren.map((child, i) => ({
       id: now + i,
       child,
       title: titles.trim(),
       author: author.trim(),
       pages: Number(pages),
-      words: estimateWords(Number(pages)),
+      wpp: effectiveWpp || autoWpp(Number(pages)),
+      words: estimateWords(Number(pages), effectiveWpp),
       date: new Date().toISOString().split('T')[0],
     }));
 
@@ -204,6 +225,7 @@ export default function Home() {
         }
       }
 
+      const effectiveWpp = wpp && !isNaN(Number(wpp)) && Number(wpp) > 0 ? Number(wpp) : undefined;
       for (const child of selectedChildren) {
         newBooks.push({
           id: idCounter++,
@@ -211,7 +233,8 @@ export default function Home() {
           title: bookTitle,
           author: bookAuthor,
           pages: bookPages,
-          words: estimateWords(bookPages),
+          wpp: effectiveWpp || autoWpp(bookPages),
+          words: estimateWords(bookPages, effectiveWpp),
           date: new Date().toISOString().split('T')[0],
         });
       }
@@ -229,6 +252,7 @@ export default function Home() {
   function resetForm() {
     setSelectedChildren([]); setCustomName('');
     setTitles(''); setAuthor(''); setPages('');
+    setWpp(''); setWppEdited(false);
     setLookupError(''); setSaveError('');
     setLooking(false); setBulkProcessing(false); setBulkProgress(null);
   }
@@ -428,9 +452,23 @@ export default function Home() {
             inputMode="numeric"
           />
 
-          {pages && !isBulkMode && (
-            <div style={s.hint}>~{estimateWords(Number(pages)).toLocaleString()} estimated words</div>
-          )}
+          {/* Words per page */}
+          <label style={s.label}>Words per Page</label>
+          <input
+            style={s.input}
+            value={wpp}
+            onChange={e => { setWpp(e.target.value); setWppEdited(true); }}
+            placeholder={pages ? String(autoWpp(Number(pages))) : '200'}
+            type="number"
+            inputMode="numeric"
+          />
+          <div style={s.hint}>
+            {pages && wpp
+              ? `~${estimateWords(Number(pages), Number(wpp)).toLocaleString()} estimated words`
+              : pages
+              ? `~${estimateWords(Number(pages)).toLocaleString()} estimated words (auto)`
+              : 'Auto-filled when pages are entered'}
+          </div>
 
           {saveError && <div style={s.error}>{saveError}</div>}
 
