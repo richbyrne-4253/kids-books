@@ -33,7 +33,7 @@ export default async function handler(req, res) {
     });
 
     const data = await response.json();
-    if (!response.ok) return res.status(500).json({ error: data.error?.message || 'API error' });
+    if (!response.ok) return res.status(500).json({ error: JSON.stringify(data) });
 
     const text = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
     const match = text.replace(/```json|```/g, '').trim().match(/\{[\s\S]*\}/);
