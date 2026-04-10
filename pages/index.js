@@ -33,8 +33,8 @@ function estimateWords(pages, customWpp) {
   return Math.round(pages * wpp);
 }
 
-async function apiFetch(method, body) {
-  const res = await fetch('/api/books', {
+async function apiFetch(method, body, qs = '') {
+  const res = await fetch('/api/books' + qs, {
     method,
     headers: { 'Content-Type': 'application/json' },
     ...(body ? { body: JSON.stringify(body) } : {}),
@@ -101,6 +101,8 @@ export default function Home() {
   const [syncError, setSyncError] = useState('');
   const [localBooks, setLocalBooks] = useState([]);
   const [importing, setImporting] = useState(false);
+  const [trashBooks, setTrashBooks] = useState([]);
+  const [trashLoading, setTrashLoading] = useState(false);
   const [editingBook, setEditingBook] = useState(null);
   const [bulkProcessing, setBulkProcessing] = useState(false);
   const [bulkProgress, setBulkProgress] = useState(null);
@@ -330,13 +332,57 @@ export default function Home() {
   }
 
   async function handleDelete(id) {
-    if (!confirm('Delete this book?')) return;
+    if (!confirm('Move this book to trash?')) return;
     setBooks(prev => prev.filter(b => b.id !== id));
     try { await apiFetch('DELETE', { id }); }
     catch (e) {
       setSyncError('Delete failed: ' + e.message);
       apiFetch('GET').then(data => setBooks(data)).catch(() => {});
     }
+  }
+
+  async function loadTrash() {
+    setTrashLoading(true);
+    try {
+      const data = await apiFetch('GET', null, '?trash=1');
+      setTrashBooks(data);
+    } catch (e) { setSyncError(e.message); }
+    finally { setTrashLoading(false); }
+  }
+
+  async function handleRestore(id) {
+    try {
+      await fetch('/api/books', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+      setTrashBooks(prev => prev.filter(b => b.id !== id));
+      apiFetch('GET').then(data => setBooks(data)).catch(() => {});
+    } catch (e) { setSyncError('Restore failed: ' + e.message); }
+  }
+
+  async function handleHardDelete(id) {
+    if (!confirm('Permanently delete? This cannot be undone.')) return;
+    try {
+      await fetch('/api/books?hard=1', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+      setTrashBooks(prev => prev.filter(b => b.id !== id));
+    } catch (e) { setSyncError('Permanent delete failed: ' + e.message); }
+  }
+
+  function handleExport() {
+    const json = JSON.stringify(books, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `kids-books-backup-${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   // ── Views ──────────────────────────────────────────────────────────
@@ -436,6 +482,58 @@ export default function Home() {
           {saveError && <div style={s.error}>{saveError}</div>}
 
           <button onClick={handleUpdate} style={s.saveBtn}>Save Changes</button>
+        </div>
+      </div>
+    );
+  }
+
+  if (view === 'trash') {
+    return (
+      <div style={s.page}>
+        <Head><title>Trash</title></Head>
+        <header style={s.header}>
+          <button style={s.back} onClick={() => setView('home')}>← Back</button>
+          <span style={s.headerTitle}>🗑️ Trash</span>
+          <div style={{width:60}}/>
+        </header>
+        <div style={s.body}>
+          {trashLoading
+            ? <div style={{textAlign:'center', padding:40, color:'#888'}}>Loading…</div>
+            : trashBooks.length === 0
+            ? <div style={{textAlign:'center', padding:40, color:'#999'}}>
+                <div style={{fontSize:40}}>✅</div>
+                <div style={{marginTop:8}}>Trash is empty</div>
+              </div>
+            : trashBooks.map(book => {
+                const col = nameToColors(book.child);
+                return (
+                  <div key={book.id} style={{
+                    padding:'12px', marginBottom:8, borderRadius:10,
+                    background:'#fafafa', border:'1px solid #eee',
+                    borderLeft:`4px solid ${col.accent}`,
+                  }}>
+                    <div style={{fontSize:15, fontWeight:700, color:'#999', textDecoration:'line-through'}}>{book.title}</div>
+                    {book.author && <div style={{fontSize:13, color:'#bbb'}}>{book.author}</div>}
+                    <div style={{fontSize:12, color:'#ccc', marginTop:2}}>
+                      <span style={{background:col.accent, color:'#fff', borderRadius:4, padding:'1px 6px', marginRight:4, opacity:0.6}}>{book.child}</span>
+                      {book.date} · {book.pages} pages
+                    </div>
+                    <div style={{display:'flex', gap:8, marginTop:10}}>
+                      <button onClick={() => handleRestore(book.id)} style={{
+                        flex:1, padding:'8px', borderRadius:8, background:'#e8f5e9',
+                        color:'#2e7d32', border:'1px solid #a5d6a7', fontWeight:700,
+                        fontSize:13, cursor:'pointer', fontFamily:'Georgia, serif',
+                      }}>↩ Restore</button>
+                      <button onClick={() => handleHardDelete(book.id)} style={{
+                        flex:1, padding:'8px', borderRadius:8, background:'#ffebee',
+                        color:'#c62828', border:'1px solid #ef9a9a', fontWeight:700,
+                        fontSize:13, cursor:'pointer', fontFamily:'Georgia, serif',
+                      }}>✕ Delete Forever</button>
+                    </div>
+                  </div>
+                );
+              })
+          }
         </div>
       </div>
     );
@@ -666,7 +764,11 @@ export default function Home() {
       <header style={s.header}>
         <span style={{fontSize:26}}>📚</span>
         <span style={s.headerTitle}>Reading Tracker</span>
-        <button style={s.testBtn} onClick={() => { setTestResults(runTests()); setView('tests'); }}>Tests</button>
+        <div style={{display:'flex', gap:6}}>
+          <button style={s.testBtn} onClick={handleExport} title="Download backup">💾</button>
+          <button style={s.testBtn} onClick={() => { loadTrash(); setView('trash'); }} title="Trash">🗑️</button>
+          <button style={s.testBtn} onClick={() => { setTestResults(runTests()); setView('tests'); }}>Tests</button>
+        </div>
       </header>
 
       {/* Stats cards */}
