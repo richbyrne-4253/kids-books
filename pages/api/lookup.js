@@ -22,7 +22,7 @@ export default async function handler(req, res) {
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-3-haiku-20240307',
+        model: 'claude-sonnet-4-20250514',
         max_tokens: 200,
         system: 'You are a book database. Always respond with only a raw JSON object, no markdown, no explanation.',
         messages: [{
@@ -33,7 +33,7 @@ export default async function handler(req, res) {
     });
 
     const data = await response.json();
-    if (!response.ok) return res.status(500).json({ error: JSON.stringify(data) });
+    if (!response.ok) return res.status(500).json({ error: data.error?.message || 'API error' });
 
     const text = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
     const match = text.replace(/```json|```/g, '').trim().match(/\{[\s\S]*\}/);
