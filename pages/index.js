@@ -179,16 +179,30 @@ export default function Home() {
     setScanning(true);
     setLookupError('');
     try {
+      // Resize to max 1024px before sending — iPhone photos can be 10+ MB
       const base64 = await new Promise((resolve, reject) => {
         const reader = new FileReader();
-        reader.onload = () => resolve(reader.result.split(',')[1]);
         reader.onerror = reject;
+        reader.onload = () => {
+          const img = new Image();
+          img.onerror = reject;
+          img.onload = () => {
+            const MAX = 1024;
+            const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.round(img.width * scale);
+            canvas.height = Math.round(img.height * scale);
+            canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+            resolve(canvas.toDataURL('image/jpeg', 0.85).split(',')[1]);
+          };
+          img.src = reader.result;
+        };
         reader.readAsDataURL(file);
       });
       const res = await fetch('/api/scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: base64, mediaType: file.type }),
+        body: JSON.stringify({ image: base64, mediaType: 'image/jpeg' }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Scan failed');
