@@ -99,17 +99,39 @@ export default function Home() {
   const [wppEdited, setWppEdited] = useState(false);
   const [loading, setLoading] = useState(true);
   const [syncError, setSyncError] = useState('');
+  const [localBooks, setLocalBooks] = useState([]);
+  const [importing, setImporting] = useState(false);
   const [editingBook, setEditingBook] = useState(null);
   const [bulkProcessing, setBulkProcessing] = useState(false);
   const [bulkProgress, setBulkProgress] = useState(null);
   const [testResults, setTestResults] = useState(null);
 
   useEffect(() => {
+    // Check for old localStorage books to offer migration
+    try {
+      const old = JSON.parse(localStorage.getItem('kids-books-v1') || '[]');
+      if (old.length > 0) setLocalBooks(old);
+    } catch {}
+
     apiFetch('GET')
       .then(data => setBooks(data))
       .catch(e => setSyncError(e.message))
       .finally(() => setLoading(false));
   }, []);
+
+  async function handleImport() {
+    setImporting(true);
+    try {
+      const saved = await apiFetch('POST', localBooks);
+      setBooks(prev => [...saved, ...prev]);
+      localStorage.removeItem('kids-books-v1');
+      setLocalBooks([]);
+    } catch (e) {
+      setSyncError('Import failed: ' + e.message);
+    } finally {
+      setImporting(false);
+    }
+  }
 
   // Auto-fill WPP when pages changes, unless user has manually set it
   useEffect(() => {
@@ -627,6 +649,18 @@ export default function Home() {
       {syncError && (
         <div style={{background:'#ffebee', color:'#c62828', padding:'10px 16px', fontSize:13}}>
           ⚠️ {syncError} — <button onClick={() => setSyncError('')} style={{background:'none', border:'none', color:'#c62828', cursor:'pointer', textDecoration:'underline'}}>dismiss</button>
+        </div>
+      )}
+      {localBooks.length > 0 && (
+        <div style={{background:'#fff8e1', borderBottom:'2px solid #f9a825', padding:'12px 16px', display:'flex', alignItems:'center', justifyContent:'space-between', gap:12}}>
+          <div style={{fontSize:13, color:'#7b6500'}}>
+            📦 Found <strong>{localBooks.length} book{localBooks.length !== 1 ? 's' : ''}</strong> saved on this browser — import to sync everywhere?
+          </div>
+          <button onClick={handleImport} disabled={importing} style={{
+            background:'#f9a825', color:'#fff', border:'none', borderRadius:8,
+            padding:'8px 14px', fontWeight:700, fontSize:13, cursor:'pointer',
+            opacity: importing ? 0.6 : 1, whiteSpace:'nowrap', fontFamily:'Georgia, serif',
+          }}>{importing ? 'Importing…' : 'Import'}</button>
         </div>
       )}
       <header style={s.header}>
