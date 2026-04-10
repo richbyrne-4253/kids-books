@@ -33,13 +33,15 @@ function estimateWords(pages, customWpp) {
   return Math.round(pages * wpp);
 }
 
-function loadBooks() {
-  try { return JSON.parse(localStorage.getItem('kids-books-v1') || '[]'); }
-  catch { return []; }
-}
-
-function saveBooks(books) {
-  localStorage.setItem('kids-books-v1', JSON.stringify(books));
+async function apiFetch(method, body) {
+  const res = await fetch('/api/books', {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    ...(body ? { body: JSON.stringify(body) } : {}),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Request failed');
+  return data;
 }
 
 // ── Tests ────────────────────────────────────────────────────────────
@@ -95,12 +97,19 @@ export default function Home() {
   const [saveError, setSaveError] = useState('');
   const [wpp, setWpp] = useState('');
   const [wppEdited, setWppEdited] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [syncError, setSyncError] = useState('');
   const [editingBook, setEditingBook] = useState(null);
   const [bulkProcessing, setBulkProcessing] = useState(false);
   const [bulkProgress, setBulkProgress] = useState(null);
   const [testResults, setTestResults] = useState(null);
 
-  useEffect(() => { setBooks(loadBooks()); }, []);
+  useEffect(() => {
+    apiFetch('GET')
+      .then(data => setBooks(data))
+      .catch(e => setSyncError(e.message))
+      .finally(() => setLoading(false));
+  }, []);
 
   // Auto-fill WPP when pages changes, unless user has manually set it
   useEffect(() => {
@@ -187,9 +196,10 @@ export default function Home() {
       date: new Date().toISOString().split('T')[0],
     }));
 
-    const updated = [...newBooks, ...books];
-    setBooks(updated);
-    saveBooks(updated);
+    try {
+      const saved = await apiFetch('POST', newBooks);
+      setBooks(prev => [...saved, ...prev]);
+    } catch (e) { return setSaveError('Save failed: ' + e.message); }
     resetForm();
     setView('home');
   }
@@ -241,9 +251,10 @@ export default function Home() {
       }
     }
 
-    const updated = [...newBooks, ...books];
-    setBooks(updated);
-    saveBooks(updated);
+    try {
+      const saved = await apiFetch('POST', newBooks);
+      setBooks(prev => [...saved, ...prev]);
+    } catch (e) { setSaveError('Save failed: ' + e.message); }
     setBulkProcessing(false);
     setBulkProgress(null);
     resetForm();
@@ -262,7 +273,7 @@ export default function Home() {
     setView('edit');
   }
 
-  function handleUpdate() {
+  async function handleUpdate() {
     setSaveError('');
     if (selectedChildren.length === 0) return setSaveError('Pick a reader');
     if (!titles.trim()) return setSaveError('Enter a title');
@@ -279,9 +290,10 @@ export default function Home() {
       words: estimateWords(Number(pages), effectiveWpp),
     };
 
-    const updated = books.map(b => b.id === editingBook.id ? updatedBook : b);
-    setBooks(updated);
-    saveBooks(updated);
+    try {
+      const saved = await apiFetch('PUT', updatedBook);
+      setBooks(prev => prev.map(b => b.id === editingBook.id ? saved : b));
+    } catch (e) { return setSaveError('Update failed: ' + e.message); }
     resetForm();
     setEditingBook(null);
     setView('home');
@@ -295,11 +307,14 @@ export default function Home() {
     setLooking(false); setBulkProcessing(false); setBulkProgress(null);
   }
 
-  function handleDelete(id) {
+  async function handleDelete(id) {
     if (!confirm('Delete this book?')) return;
-    const updated = books.filter(b => b.id !== id);
-    setBooks(updated);
-    saveBooks(updated);
+    setBooks(prev => prev.filter(b => b.id !== id));
+    try { await apiFetch('DELETE', { id }); }
+    catch (e) {
+      setSyncError('Delete failed: ' + e.message);
+      apiFetch('GET').then(data => setBooks(data)).catch(() => {});
+    }
   }
 
   // ── Views ──────────────────────────────────────────────────────────
@@ -596,10 +611,24 @@ export default function Home() {
   }
 
   // Home
+  if (loading) return (
+    <div style={{...s.page, display:'flex', alignItems:'center', justifyContent:'center', minHeight:'100vh'}}>
+      <div style={{textAlign:'center', color:'#888'}}>
+        <div style={{fontSize:48, marginBottom:12}}>📚</div>
+        <div>Loading books…</div>
+      </div>
+    </div>
+  );
+
   const readers = allReaders();
   return (
     <div style={s.page}>
       <Head><title>Kids Reading Tracker</title></Head>
+      {syncError && (
+        <div style={{background:'#ffebee', color:'#c62828', padding:'10px 16px', fontSize:13}}>
+          ⚠️ {syncError} — <button onClick={() => setSyncError('')} style={{background:'none', border:'none', color:'#c62828', cursor:'pointer', textDecoration:'underline'}}>dismiss</button>
+        </div>
+      )}
       <header style={s.header}>
         <span style={{fontSize:26}}>📚</span>
         <span style={s.headerTitle}>Reading Tracker</span>
