@@ -474,7 +474,7 @@ export default function Home() {
           {/* Pages */}
           <label style={s.label}>Pages</label>
           <input style={s.input} value={pages} onChange={e => setPages(e.target.value)}
-            type="number" inputMode="numeric" placeholder="278" />
+            type="number" inputMode="numeric" placeholder="enter page count" />
 
           {/* WPP */}
           <label style={s.label}>Words per Page</label>
