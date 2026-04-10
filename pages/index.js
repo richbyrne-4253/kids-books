@@ -93,6 +93,7 @@ export default function Home() {
   const [author, setAuthor] = useState('');
   const [pages, setPages] = useState('');
   const [looking, setLooking] = useState(false);
+  const [scanning, setScanning] = useState(false);
   const [lookupError, setLookupError] = useState('');
   const [saveError, setSaveError] = useState('');
   const [wpp, setWpp] = useState('');
@@ -170,6 +171,39 @@ export default function Home() {
       setSelectedChildren(prev => [...prev, name]);
     }
     setCustomName('');
+  }
+
+  async function handleScan(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setScanning(true);
+    setLookupError('');
+    try {
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const res = await fetch('/api/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: base64, mediaType: file.type }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Scan failed');
+      setTitles(data.title || '');
+      setAuthor(data.author || '');
+      if (data.pages) {
+        setPages(String(data.pages));
+        if (!wppEdited) setWpp(String(autoWpp(data.pages)));
+      }
+    } catch (e) {
+      setLookupError('Scan failed: ' + e.message);
+    } finally {
+      setScanning(false);
+      e.target.value = '';
+    }
   }
 
   async function handleLookup() {
@@ -654,9 +688,25 @@ export default function Home() {
           )}
 
           {/* Title(s) */}
-          <label style={s.label}>
-            {isBulkMode ? `Book Titles (${titleLines.length} detected)` : 'Book Title'}
-          </label>
+          <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:16, marginBottom:6}}>
+            <span style={{...s.label, marginTop:0, marginBottom:0}}>
+              {isBulkMode ? `Book Titles (${titleLines.length} detected)` : 'Book Title'}
+            </span>
+            {!isBulkMode && (
+              <label style={{
+                fontSize:13, color:'#5c6bc0', fontWeight:700, cursor:'pointer',
+                display:'flex', alignItems:'center', gap:4,
+                opacity: scanning ? 0.5 : 1,
+              }}>
+                {scanning ? '⏳ Scanning…' : '📷 Scan Cover'}
+                <input
+                  type="file" accept="image/*" capture="environment"
+                  onChange={handleScan} disabled={scanning}
+                  style={{display:'none'}}
+                />
+              </label>
+            )}
+          </div>
           <textarea
             style={{
               ...s.input,
