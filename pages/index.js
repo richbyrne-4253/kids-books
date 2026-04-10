@@ -374,6 +374,18 @@ export default function Home() {
     } catch (e) { setSyncError('Permanent delete failed: ' + e.message); }
   }
 
+  async function handleRecalculate() {
+    if (!confirm('Recalculate all word counts from pages × WPP?')) return;
+    try {
+      const res = await fetch('/api/recalculate', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      const fresh = await apiFetch('GET');
+      setBooks(fresh);
+      alert(`✅ Recalculated words for ${data.updated} book${data.updated !== 1 ? 's' : ''}.`);
+    } catch (e) { setSyncError('Recalculate failed: ' + e.message); }
+  }
+
   function handleExport() {
     const json = JSON.stringify(books, null, 2);
     const blob = new Blob([json], { type: 'application/json' });
@@ -766,6 +778,7 @@ export default function Home() {
         <span style={s.headerTitle}>Reading Tracker</span>
         <div style={{display:'flex', gap:6}}>
           <button style={s.testBtn} onClick={handleExport} title="Download backup">💾</button>
+          <button style={s.testBtn} onClick={handleRecalculate} title="Recalculate word counts">🔢</button>
           <button style={s.testBtn} onClick={() => { loadTrash(); setView('trash'); }} title="Trash">🗑️</button>
           <button style={s.testBtn} onClick={() => { setTestResults(runTests()); setView('tests'); }}>Tests</button>
         </div>
