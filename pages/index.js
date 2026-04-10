@@ -95,6 +95,7 @@ export default function Home() {
   const [saveError, setSaveError] = useState('');
   const [wpp, setWpp] = useState('');
   const [wppEdited, setWppEdited] = useState(false);
+  const [editingBook, setEditingBook] = useState(null);
   const [bulkProcessing, setBulkProcessing] = useState(false);
   const [bulkProgress, setBulkProgress] = useState(null);
   const [testResults, setTestResults] = useState(null);
@@ -249,6 +250,43 @@ export default function Home() {
     setView('home');
   }
 
+  function startEdit(book) {
+    setEditingBook(book);
+    setSelectedChildren([book.child]);
+    setTitles(book.title);
+    setAuthor(book.author || '');
+    setPages(String(book.pages || ''));
+    setWpp(String(book.wpp || autoWpp(book.pages || 0)));
+    setWppEdited(true);
+    setSaveError('');
+    setView('edit');
+  }
+
+  function handleUpdate() {
+    setSaveError('');
+    if (selectedChildren.length === 0) return setSaveError('Pick a reader');
+    if (!titles.trim()) return setSaveError('Enter a title');
+    if (!pages || isNaN(Number(pages)) || Number(pages) <= 0) return setSaveError('Enter a valid page count');
+
+    const effectiveWpp = wpp && !isNaN(Number(wpp)) && Number(wpp) > 0 ? Number(wpp) : undefined;
+    const updatedBook = {
+      ...editingBook,
+      child: selectedChildren[0],
+      title: titles.trim(),
+      author: author.trim(),
+      pages: Number(pages),
+      wpp: effectiveWpp || autoWpp(Number(pages)),
+      words: estimateWords(Number(pages), effectiveWpp),
+    };
+
+    const updated = books.map(b => b.id === editingBook.id ? updatedBook : b);
+    setBooks(updated);
+    saveBooks(updated);
+    resetForm();
+    setEditingBook(null);
+    setView('home');
+  }
+
   function resetForm() {
     setSelectedChildren([]); setCustomName('');
     setTitles(''); setAuthor(''); setPages('');
@@ -287,6 +325,80 @@ export default function Home() {
               <span style={{color: r.pass?'#333':'#c62828', fontSize:14}}>{r.name}</span>
             </div>
           ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (view === 'edit' && editingBook) {
+    const col = nameToColors(selectedChildren[0] || editingBook.child);
+    return (
+      <div style={s.page}>
+        <Head><title>Edit Book</title></Head>
+        <header style={s.header}>
+          <button style={s.back} onClick={() => { resetForm(); setEditingBook(null); setView('home'); }}>← Back</button>
+          <span style={s.headerTitle}>Edit Book</span>
+          <div style={{width:60}}/>
+        </header>
+        <div style={s.body}>
+
+          {/* Reader — single select */}
+          <label style={s.label}>Reader</label>
+          <div style={{display:'flex', gap:12, marginBottom:12}}>
+            {CHILDREN.map(c => {
+              const cc = nameToColors(c);
+              const sel = selectedChildren[0] === c;
+              return (
+                <button key={c} onClick={() => setSelectedChildren([c])} style={{
+                  flex:1, padding:14, borderRadius:12, border:`2px solid ${cc.accent}`,
+                  background: sel ? cc.accent : cc.bg,
+                  color: sel ? '#fff' : cc.dark,
+                  fontSize:18, fontWeight:700, cursor:'pointer', fontFamily:'Georgia, serif',
+                }}>{c}</button>
+              );
+            })}
+          </div>
+          {/* Custom name for reader */}
+          <div style={{display:'flex', gap:8, marginBottom:20}}>
+            <input
+              style={{...s.input, marginBottom:0, flex:1}}
+              value={!CHILDREN.includes(selectedChildren[0]) ? (selectedChildren[0] || customName) : customName}
+              onChange={e => { setCustomName(e.target.value); setSelectedChildren([e.target.value]); }}
+              placeholder="Other reader name…"
+            />
+          </div>
+
+          {/* Title */}
+          <label style={s.label}>Book Title</label>
+          <input style={s.input} value={titles} onChange={e => setTitles(e.target.value)} placeholder="Title" />
+
+          {/* Author */}
+          <label style={s.label}>Author</label>
+          <input style={s.input} value={author} onChange={e => setAuthor(e.target.value)} placeholder="Author" />
+
+          {/* Pages */}
+          <label style={s.label}>Pages</label>
+          <input style={s.input} value={pages} onChange={e => setPages(e.target.value)}
+            type="number" inputMode="numeric" placeholder="278" />
+
+          {/* WPP */}
+          <label style={s.label}>Words per Page</label>
+          <input
+            style={s.input}
+            value={wpp}
+            onChange={e => { setWpp(e.target.value); setWppEdited(true); }}
+            type="number" inputMode="numeric"
+            placeholder={pages ? String(autoWpp(Number(pages))) : '200'}
+          />
+          <div style={s.hint}>
+            {pages && wpp
+              ? `~${estimateWords(Number(pages), Number(wpp)).toLocaleString()} estimated words`
+              : pages ? `~${estimateWords(Number(pages)).toLocaleString()} estimated words` : ''}
+          </div>
+
+          {saveError && <div style={s.error}>{saveError}</div>}
+
+          <button onClick={handleUpdate} style={s.saveBtn}>Save Changes</button>
         </div>
       </div>
     );
@@ -531,14 +643,16 @@ export default function Home() {
                   display:'flex', alignItems:'flex-start', gap:10,
                   padding:'12px 0 12px 12px', borderBottom:'1px solid #ede8de',
                   borderLeft:`4px solid ${col.accent}`, marginBottom:4,
+                  cursor:'pointer',
                 }}>
-                  <div style={{flex:1}}>
+                  <div style={{flex:1}} onClick={() => startEdit(book)}>
                     <div style={{fontSize:16, fontWeight:700, color:'#2d1f14'}}>{book.title}</div>
                     {book.author && <div style={{fontSize:13, color:'#888'}}>{book.author}</div>}
                     <div style={{fontSize:12, color:'#aaa', marginTop:2}}>
                       <span style={{background:col.accent, color:'#fff', borderRadius:4, padding:'1px 6px', marginRight:4}}>{book.child}</span>
-                      {book.date} · {book.pages} pages · ~{book.words?.toLocaleString()} words
+                      {book.date} · {book.pages} pages · {book.wpp || autoWpp(book.pages)} wpp · ~{book.words?.toLocaleString()} words
                     </div>
+                    <div style={{fontSize:11, color:'#bbb', marginTop:2}}>tap to edit</div>
                   </div>
                   <button onClick={() => handleDelete(book.id)}
                     style={{background:'none', border:'none', color:'#ccc', fontSize:18, cursor:'pointer', padding:'0 8px'}}>✕</button>
