@@ -108,6 +108,10 @@ export default function Home() {
   const [bulkProcessing, setBulkProcessing] = useState(false);
   const [bulkProgress, setBulkProgress] = useState(null);
   const [testResults, setTestResults] = useState(null);
+  const [profileReader, setProfileReader] = useState(null);
+  const [profileData, setProfileData] = useState(null);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileError, setProfileError] = useState('');
 
   useEffect(() => {
     // Check for old localStorage books to offer migration
@@ -432,6 +436,29 @@ export default function Home() {
       setBooks(fresh);
       alert(`✅ Recalculated words for ${data.updated} book${data.updated !== 1 ? 's' : ''}.`);
     } catch (e) { setSyncError('Recalculate failed: ' + e.message); }
+  }
+
+  async function openReaderProfile(name) {
+    setProfileReader(name);
+    setProfileData(null);
+    setProfileError('');
+    setProfileLoading(true);
+    setView('reader');
+    const readerBooks = books.filter(b => b.child === name);
+    try {
+      const res = await fetch('/api/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reader: name, books: readerBooks.map(b => ({ title: b.title, author: b.author, pages: b.pages })) }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Profile failed');
+      setProfileData(data);
+    } catch (e) {
+      setProfileError(e.message);
+    } finally {
+      setProfileLoading(false);
+    }
   }
 
   function handleExport() {
@@ -806,6 +833,95 @@ export default function Home() {
     );
   }
 
+  if (view === 'reader' && profileReader) {
+    const col = nameToColors(profileReader);
+    const t = totals(profileReader);
+    return (
+      <div style={s.page}>
+        <Head><title>{profileReader}'s Reading Profile</title></Head>
+        <header style={s.header}>
+          <button style={s.back} onClick={() => { setView('home'); setProfileReader(null); setProfileData(null); }}>← Back</button>
+          <span style={s.headerTitle}>{profileReader}'s Profile</span>
+          <div style={{width:60}}/>
+        </header>
+        <div style={s.body}>
+
+          {/* Stats row */}
+          <div style={{display:'flex', gap:8, marginBottom:20}}>
+            {[['📚', t.count, 'Books'], ['📄', t.pages.toLocaleString(), 'Pages'], ['✍️', (t.words >= 1000 ? (t.words/1000).toFixed(0)+'K' : t.words), 'Words']].map(([icon, val, label]) => (
+              <div key={label} style={{flex:1, background:col.bg, border:`1px solid ${col.accent}`, borderRadius:10, padding:'10px 6px', textAlign:'center'}}>
+                <div style={{fontSize:20}}>{icon}</div>
+                <div style={{fontSize:18, fontWeight:700, color:col.dark}}>{val}</div>
+                <div style={{fontSize:10, color:'#888', textTransform:'uppercase', letterSpacing:0.5}}>{label}</div>
+              </div>
+            ))}
+          </div>
+
+          {profileLoading && (
+            <div style={{textAlign:'center', padding:40, color:'#888'}}>
+              <div style={{fontSize:36, marginBottom:8}}>🔍</div>
+              <div>Analyzing reading history…</div>
+            </div>
+          )}
+
+          {profileError && <div style={s.error}>{profileError}</div>}
+
+          {profileData && (
+            <>
+              {/* Favorites */}
+              <div style={s.sectionLabel}>Favorites</div>
+              {(profileData.groups || []).map((g, i) => (
+                <div key={i} style={{
+                  background:'#fff', border:`1px solid #e8e0d8`, borderRadius:10,
+                  padding:'12px 14px', marginBottom:8,
+                  display:'flex', justifyContent:'space-between', alignItems:'center',
+                  borderLeft:`4px solid ${col.accent}`,
+                }}>
+                  <div>
+                    <div style={{fontSize:15, fontWeight:700, color:'#2d1f14'}}>{g.name}</div>
+                    <div style={{fontSize:12, color:'#aaa', marginTop:2}}>{g.type === 'series' ? '📖 Series' : '✍️ Author'}</div>
+                  </div>
+                  <div style={{textAlign:'right', flexShrink:0, marginLeft:12}}>
+                    <div style={{fontSize:16, fontWeight:700, color:col.accent}}>{g.count} {g.count === 1 ? 'book' : 'books'}</div>
+                    <div style={{
+                      fontSize:11, background:col.bg, color:col.dark,
+                      borderRadius:10, padding:'2px 8px', marginTop:4,
+                      display:'inline-block', border:`1px solid ${col.accent}`,
+                    }}>{g.readingLevel}</div>
+                  </div>
+                </div>
+              ))}
+
+              {/* Suggestions */}
+              <div style={{...s.sectionLabel, marginTop:24}}>What to Read Next</div>
+              {(profileData.suggestions || []).map((suggestion, i) => (
+                <div key={i} style={{
+                  background:col.bg, border:`1px solid ${col.accent}`,
+                  borderRadius:10, padding:'12px 14px', marginBottom:8,
+                }}>
+                  <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start'}}>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:15, fontWeight:700, color:'#2d1f14'}}>{suggestion.title}</div>
+                      <div style={{fontSize:13, color:'#888'}}>{suggestion.author}</div>
+                    </div>
+                    <div style={{
+                      fontSize:11, background:'#fff', color:col.dark,
+                      borderRadius:10, padding:'2px 8px', marginLeft:8,
+                      border:`1px solid ${col.accent}`, whiteSpace:'nowrap', flexShrink:0,
+                    }}>{suggestion.readingLevel}</div>
+                  </div>
+                  {suggestion.why && (
+                    <div style={{fontSize:13, color:'#666', marginTop:6, fontStyle:'italic'}}>"{suggestion.why}"</div>
+                  )}
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   // Home
   if (loading) return (
     <div style={{...s.page, display:'flex', alignItems:'center', justifyContent:'center', minHeight:'100vh'}}>
@@ -854,7 +970,7 @@ export default function Home() {
           const t = totals(c);
           const col = nameToColors(c);
           return (
-            <div key={c} style={{flex:'1 1 140px', background:col.bg, border:`2px solid ${col.accent}`, borderRadius:14, padding:14}}>
+            <div key={c} onClick={() => openReaderProfile(c)} style={{flex:'1 1 140px', background:col.bg, border:`2px solid ${col.accent}`, borderRadius:14, padding:14, cursor:'pointer'}}>
               <div style={{fontSize:20, fontWeight:700, color:col.dark, marginBottom:8}}>{c}</div>
               {[['Books', t.count], ['Pages', t.pages.toLocaleString()], ['~Words', t.words.toLocaleString()]].map(([label, val]) => (
                 <div key={label} style={{display:'flex', justifyContent:'space-between', marginBottom:4}}>
@@ -862,6 +978,7 @@ export default function Home() {
                   <span style={{fontSize:16, fontWeight:700, color:col.accent}}>{val}</span>
                 </div>
               ))}
+              <div style={{fontSize:11, color:col.accent, marginTop:6, textAlign:'right', opacity:0.7}}>tap for profile →</div>
             </div>
           );
         })}
@@ -924,4 +1041,5 @@ const s = {
   hint: { color:'#888', fontSize:13, marginTop:4, marginBottom:8 },
   badge: { padding:'12px 16px', borderRadius:10, fontWeight:700, fontSize:16, marginBottom:16 },
   testRow: { display:'flex', alignItems:'center', padding:'10px 0', borderBottom:'1px solid #eee' },
+  sectionLabel: { fontSize:12, fontWeight:700, color:'#888', textTransform:'uppercase', letterSpacing:1, marginBottom:10 },
 };
