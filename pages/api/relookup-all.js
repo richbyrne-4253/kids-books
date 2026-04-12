@@ -51,7 +51,7 @@ export default async function handler(req, res) {
   if (!apiKey) return res.status(500).json({ error: 'ANTHROPIC_API_KEY not set' });
 
   const offset = parseInt(req.query.offset || '0', 10);
-  const limit = parseInt(req.query.limit || '10', 10);
+  const limit = parseInt(req.query.limit || '3', 10);
 
   const sb = getSupabase();
   const { data: books, error } = await sb
@@ -81,7 +81,7 @@ export default async function handler(req, res) {
     } catch (e) {
       results.failed.push({ title: book.title, error: e.message });
     }
-    await sleep(3000); // 3s between requests to stay under rate limit
+    await sleep(35000); // 35s between requests (~2/min, stays under 30k token/min limit)
   }
 
   return res.status(200).json({
