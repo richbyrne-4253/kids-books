@@ -33,12 +33,12 @@ export default async function handler(req, res) {
             max_uses: 2,
           },
         ],
-        system: 'You are a book database assistant. Use web search to find accurate book metadata including word counts from Lexile or similar sources. Always end your response with a raw JSON object only — no markdown, no explanation after the JSON.',
+        system: 'You are a book database assistant. Use web search to find accurate book metadata including word counts from bookroo.com. Always end your response with a raw JSON object only — no markdown, no explanation after the JSON.',
         messages: [{
           role: 'user',
           content: `Find accurate metadata for the book ${query}.
 
-Search for: ${title}${author ? ` ${author}` : ''} word count pages lexile
+Search bookroo.com for: ${title}${author ? ` ${author}` : ''} word count
 
 Return ONLY this JSON object (word_count is the exact total words, or null if not found):
 {"title":"...","author":"...","pages":123,"word_count":45678,"confidence":"high|medium|low"}`,

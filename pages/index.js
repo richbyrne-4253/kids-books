@@ -991,7 +991,7 @@ export default function Home() {
                   <div style={{fontSize:15, fontWeight:700, color:'#2d1f14'}}>{book.title}</div>
                   {book.author && <div style={{fontSize:13, color:'#888'}}>{book.author}</div>}
                   <div style={{fontSize:15, color:'#aaa', marginTop:4}}>
-                    {book.date} · {book.pages} pages · {bookWpp} wpp · <span style={{color:'#2d1f14', fontWeight:700}}>~{bookWords.toLocaleString()} words</span>
+                    {book.date} · {book.pages} pages · {bookWpp} wpp · <span style={{color:'#2d1f14', fontWeight:700}}>{bookWords.toLocaleString()} words</span>
                   </div>
                   <div style={{fontSize:11, color:'#bbb', marginTop:2}}>tap to edit</div>
                 </div>
@@ -1062,7 +1062,7 @@ export default function Home() {
                     </div>
                     {(gs.pages > 0 || gs.words > 0) && (
                       <div style={{fontSize:15, color:'#888', marginTop:6}}>
-                        {gs.pages.toLocaleString()} pages · <span style={{color:'#2d1f14', fontWeight:700}}>~{gs.words >= 1000 ? (gs.words/1000).toFixed(0)+'K' : gs.words} words</span>
+                        {gs.pages.toLocaleString()} pages · <span style={{color:'#2d1f14', fontWeight:700}}>{gs.words >= 1000 ? (gs.words/1000).toFixed(0)+'K' : gs.words} words</span>
                       </div>
                     )}
                   </div>
@@ -1135,9 +1135,8 @@ export default function Home() {
         <span style={s.headerTitle}>Reading Tracker</span>
         <div style={{display:'flex', gap:6}}>
           <button style={s.testBtn} onClick={handleExport} title="Download backup">💾</button>
-          <button style={s.testBtn} onClick={handleRecalculate} title="Recalculate word counts">🔢</button>
           <button style={s.testBtn} onClick={() => { loadTrash(); setView('trash'); }} title="Trash">🗑️</button>
-          <span style={{fontSize:10, color:'#bbb', alignSelf:'center', paddingRight:2}}>v2.7</span>
+          <span style={{fontSize:10, color:'#bbb', alignSelf:'center', paddingRight:2}}>v2.8</span>
         </div>
       </header>
 
@@ -1149,7 +1148,7 @@ export default function Home() {
           return (
             <div key={c} onClick={() => openReaderProfile(c)} style={{flex:'1 1 140px', background:col.bg, border:`2px solid ${col.accent}`, borderRadius:14, padding:14, cursor:'pointer'}}>
               <div style={{fontSize:20, fontWeight:700, color:col.dark, marginBottom:8}}>{c}</div>
-              {[['Books', t.count], ['Pages', t.pages.toLocaleString()], ['~Words', t.words.toLocaleString()]].map(([label, val]) => (
+              {[['Books', t.count], ['Pages', t.pages.toLocaleString()], ['Words', t.words.toLocaleString()]].map(([label, val]) => (
                 <div key={label} style={{display:'flex', justifyContent:'space-between', marginBottom:6}}>
                   <span style={{fontSize:15, color:'#888', textTransform:'uppercase', fontWeight:600}}>{label}</span>
                   <span style={{fontSize:20, fontWeight:700, color:col.accent}}>{val}</span>
@@ -1186,7 +1185,7 @@ export default function Home() {
                     {book.author && <div style={{fontSize:13, color:'#888'}}>{book.author}</div>}
                     <div style={{fontSize:15, color:'#aaa', marginTop:2}}>
                       <span style={{background:col.accent, color:'#fff', borderRadius:4, padding:'1px 6px', marginRight:4}}>{book.child}</span>
-                      {book.date} · {book.pages} pages · {book.wpp || autoWpp(book.pages)} wpp · <span style={{color:'#2d1f14', fontWeight:700}}>~{book.words?.toLocaleString()} words</span>
+                      {book.date} · {book.pages} pages · {book.wpp || autoWpp(book.pages)} wpp · <span style={{color:'#2d1f14', fontWeight:700}}>{book.words?.toLocaleString()} words</span>
                     </div>
                     <div style={{fontSize:11, color:'#bbb', marginTop:2}}>tap to edit</div>
                   </div>
