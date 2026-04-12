@@ -919,19 +919,25 @@ export default function Home() {
             {sorted.length === 0 && (
               <div style={{color:'#aaa', fontSize:14, textAlign:'center', padding:'20px 0'}}>No matched books found</div>
             )}
-            {sorted.map(book => (
-              <div key={book.id} style={{
-                padding:'12px 14px', marginBottom:8, borderRadius:10,
-                background:'#fff', border:'1px solid #e8e0d8',
-                borderLeft:`4px solid ${col.accent}`,
-              }}>
-                <div style={{fontSize:15, fontWeight:700, color:'#2d1f14'}}>{book.title}</div>
-                {book.author && <div style={{fontSize:13, color:'#888'}}>{book.author}</div>}
-                <div style={{fontSize:15, color:'#aaa', marginTop:4}}>
-                  {book.date} · {book.pages} pages · <span style={{color:'#2d1f14', fontWeight:700}}>~{book.words?.toLocaleString()} words</span>
+            {sorted.map(book => {
+              const bookWpp = book.wpp || autoWpp(book.pages || 0);
+              const bookWords = book.words || estimateWords(book.pages || 0, bookWpp);
+              return (
+                <div key={book.id} onClick={() => startEdit(book)} style={{
+                  padding:'12px 14px', marginBottom:8, borderRadius:10,
+                  background:'#fff', border:'1px solid #e8e0d8',
+                  borderLeft:`4px solid ${col.accent}`,
+                  cursor:'pointer',
+                }}>
+                  <div style={{fontSize:15, fontWeight:700, color:'#2d1f14'}}>{book.title}</div>
+                  {book.author && <div style={{fontSize:13, color:'#888'}}>{book.author}</div>}
+                  <div style={{fontSize:15, color:'#aaa', marginTop:4}}>
+                    {book.date} · {book.pages} pages · {bookWpp} wpp · <span style={{color:'#2d1f14', fontWeight:700}}>~{bookWords.toLocaleString()} words</span>
+                  </div>
+                  <div style={{fontSize:11, color:'#bbb', marginTop:2}}>tap to edit</div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       );
@@ -1072,7 +1078,7 @@ export default function Home() {
           <button style={s.testBtn} onClick={handleExport} title="Download backup">💾</button>
           <button style={s.testBtn} onClick={handleRecalculate} title="Recalculate word counts">🔢</button>
           <button style={s.testBtn} onClick={() => { loadTrash(); setView('trash'); }} title="Trash">🗑️</button>
-          <span style={{fontSize:10, color:'#bbb', alignSelf:'center', paddingRight:2}}>v2.5</span>
+          <span style={{fontSize:10, color:'#bbb', alignSelf:'center', paddingRight:2}}>v2.6</span>
         </div>
       </header>
 
