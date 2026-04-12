@@ -760,9 +760,9 @@ export default function Home() {
             )}
           </div>
 
-          {/* ── Section 2: Book Title & Author ── */}
+          {/* ── Section 2: Book Title ── */}
           <div style={s.formSection}>
-            <div style={s.formSectionTitle}>📖 Book Title &amp; Author</div>
+            <div style={s.formSectionTitle}>📖 Book Title</div>
 
             {/* Title(s) */}
             <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6}}>
@@ -808,20 +808,11 @@ export default function Home() {
                 {!pages ? ' — page counts auto-looked up for each' : ` — all using ${pages} pages`}
               </div>
             )}
-
-            {/* Author (single mode only) */}
-            {!isBulkMode && (
-              <>
-                <label style={s.label}>Author (optional)</label>
-                <input style={s.input} value={author} onChange={e => setAuthor(e.target.value)}
-                  placeholder="Enter Author Name Here Optionally or hit look up" />
-              </>
-            )}
           </div>
 
-          {/* ── Section 3: Look Up & Page Details ── */}
+          {/* ── Section 3: Author, Look Up & Page Details ── */}
           <div style={s.formSection}>
-            <div style={s.formSectionTitle}>🔍 Pages &amp; Word Estimate</div>
+            <div style={s.formSectionTitle}>🔍 Author, Pages &amp; Word Estimate</div>
 
             {/* Lookup button (single mode only) */}
             {!isBulkMode && (
@@ -829,9 +820,13 @@ export default function Home() {
                 <button onClick={handleLookup} disabled={looking || !titles.trim()} style={{
                   ...s.lookupBtn, opacity: (!titles.trim() || looking) ? 0.5 : 1, marginTop:0
                 }}>
-                  {looking ? 'Looking up…' : '🔍 Look Up Author, Page, and Estimate Words Per Page'}
+                  {looking ? 'Looking up…' : '🔍 Look Up Info on Web'}
                 </button>
-                {lookupError && <div style={s.error}>Lookup failed: {lookupError}<br/><small>You can still enter pages manually below.</small></div>}
+                {lookupError && <div style={s.error}>Lookup failed: {lookupError}<br/><small>You can still enter details manually below.</small></div>}
+
+                <label style={s.label}>Author (optional)</label>
+                <input style={s.input} value={author} onChange={e => setAuthor(e.target.value)}
+                  placeholder="Enter Author Name Here Optionally or hit look up" />
               </>
             )}
 
@@ -1083,7 +1078,7 @@ export default function Home() {
           <button style={s.testBtn} onClick={handleExport} title="Download backup">💾</button>
           <button style={s.testBtn} onClick={handleRecalculate} title="Recalculate word counts">🔢</button>
           <button style={s.testBtn} onClick={() => { loadTrash(); setView('trash'); }} title="Trash">🗑️</button>
-          <span style={{fontSize:10, color:'#bbb', alignSelf:'center', paddingRight:2}}>v2.1</span>
+          <span style={{fontSize:10, color:'#bbb', alignSelf:'center', paddingRight:2}}>v2.2</span>
         </div>
       </header>
 
