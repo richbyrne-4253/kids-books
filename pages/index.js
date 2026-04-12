@@ -253,7 +253,12 @@ export default function Home() {
       setTitles(data.title || titles);
       setAuthor(data.author || author);
       setPages(String(data.pages || ''));
-      if (data.pages && !wppEdited) setWpp(String(autoWpp(data.pages)));
+      if (data.word_count) {
+        setTotalWords(String(data.word_count));
+        setTotalWordsEdited(true);
+      } else if (data.pages && !wppEdited) {
+        setWpp(String(autoWpp(data.pages)));
+      }
     } catch (e) {
       setLookupError(e.message);
     } finally {

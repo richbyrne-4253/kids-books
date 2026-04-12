@@ -1,6 +1,11 @@
 // pages/api/lookup.js
 // Server-side API route — runs on Vercel, not in the browser.
 // Has full network access to call Anthropic.
+//
+// Strategy:
+//   1. web_fetch (free) → try Lexile Hub for exact word count
+//   2. web_search ($0.01) → fallback if fetch returns no useful data
+//   3. Claude memory → last resort if no tools find it
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
@@ -12,6 +17,7 @@ export default async function handler(req, res) {
   if (!apiKey) return res.status(500).json({ error: 'ANTHROPIC_API_KEY not set' });
 
   const query = author ? `"${title}" by ${author}` : `"${title}"`;
+  const lexileUrl = `https://hub.lexile.com/find-a-book/search/results/?title=${encodeURIComponent(title)}${author ? `&author=${encodeURIComponent(author)}` : ''}`;
 
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -23,11 +29,35 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 200,
-        system: 'You are a book database. Always respond with only a raw JSON object, no markdown, no explanation.',
+        max_tokens: 1024,
+        tools: [
+          {
+            type: 'web_fetch_20250910',
+            name: 'web_fetch',
+            max_uses: 2,
+            max_content_tokens: 8000,
+          },
+          {
+            type: 'web_search_20250305',
+            name: 'web_search',
+            max_uses: 1,
+          },
+        ],
+        system: 'You are a book database assistant. Use web tools to find accurate book metadata. Always end your response with a raw JSON object only — no markdown, no explanation after the JSON.',
         messages: [{
           role: 'user',
-          content: `Find the book ${query}. Return only this JSON: {"title":"...","author":"...","pages":123,"confidence":"high|medium|low"}`
+          content: `Find accurate metadata for the book ${query}.
+
+Step 1: Fetch this Lexile Hub URL to get the exact word count:
+${lexileUrl}
+
+Step 2: If the fetch doesn't return book data with a word count, search the web for:
+site:lexile.com "${title}"${author ? ` ${author}` : ''} word count
+
+Step 3: Use your knowledge if neither tool finds it.
+
+Return ONLY this JSON object (word_count is the exact total words from Lexile, or null if not found):
+{"title":"...","author":"...","pages":123,"word_count":45678,"confidence":"high|medium|low"}`,
         }],
       }),
     });
