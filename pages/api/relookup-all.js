@@ -2,10 +2,11 @@
 // One-time endpoint: re-looks up word counts from bookroo.com for all active books.
 // Updates only where bookroo returns a word count (high/medium confidence).
 // Leaves untouched if not found. DELETE this file after running.
+// Supports ?offset=N&limit=N for batched calls to avoid rate limits.
 
 import { createClient } from '@supabase/supabase-js';
 
-export const config = { maxDuration: 300 };
+export const config = { maxDuration: 120 };
 
 function getSupabase() {
   return createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
@@ -49,12 +50,16 @@ export default async function handler(req, res) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return res.status(500).json({ error: 'ANTHROPIC_API_KEY not set' });
 
+  const offset = parseInt(req.query.offset || '0', 10);
+  const limit = parseInt(req.query.limit || '10', 10);
+
   const sb = getSupabase();
   const { data: books, error } = await sb
     .from('kids_books')
     .select('id, title, author, words, pages')
     .is('deleted_at', null)
-    .order('created_at', { ascending: true });
+    .order('created_at', { ascending: true })
+    .range(offset, offset + limit - 1);
 
   if (error) return res.status(500).json({ error: error.message });
 
@@ -76,11 +81,13 @@ export default async function handler(req, res) {
     } catch (e) {
       results.failed.push({ title: book.title, error: e.message });
     }
-    await sleep(500); // avoid hammering the API
+    await sleep(3000); // 3s between requests to stay under rate limit
   }
 
   return res.status(200).json({
-    total: books.length,
+    offset,
+    limit,
+    processed: books.length,
     updated: results.updated.length,
     skipped: results.skipped.length,
     failed: results.failed.length,
