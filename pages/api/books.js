@@ -27,7 +27,7 @@ export default async function handler(req, res) {
 
   if (req.method === 'GET') {
     const trash = req.query.trash === '1';
-    const query = sb.from('kids_books').select('*').order('created_at', { ascending: false });
+    const query = sb.from('kids_books').select('*').order('title', { ascending: true });
     const { data, error } = trash
       ? await query.not('deleted_at', 'is', null)
       : await query.is('deleted_at', null);
