@@ -33,12 +33,14 @@ export default async function handler(req, res) {
             max_uses: 2,
           },
         ],
-        system: 'You are a book database assistant. Use web search to find accurate book metadata including word counts from bookroo.com. Always end your response with a raw JSON object only — no markdown, no explanation after the JSON.',
+        system: 'You are a book database assistant. Use web search to find accurate book metadata including word counts from AR BookFinder (arbookfind.com). AR BookFinder lists "Word Count" on every book detail page — that is the number to use. Always end your response with a raw JSON object only — no markdown, no explanation after the JSON.',
         messages: [{
           role: 'user',
           content: `Find accurate metadata for the book ${query}.
 
-Search bookroo.com for: ${title}${author ? ` ${author}` : ''} word count
+Search arbookfind.com for: ${title}${author ? ` ${author}` : ''} word count
+
+Find the book on AR BookFinder and extract the Word Count field from its detail page.
 
 Return ONLY this JSON object (word_count is the exact total words, or null if not found):
 {"title":"...","author":"...","pages":123,"word_count":45678,"confidence":"high|medium|low"}`,
