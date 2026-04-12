@@ -693,159 +693,178 @@ export default function Home() {
         </header>
         <div style={s.body}>
 
-          {/* Reader picker */}
-          <label style={s.label}>Who read it?</label>
-          <div style={{display:'flex', gap:12, marginBottom:12}}>
-            {CHILDREN.map(c => {
-              const col = nameToColors(c);
-              const sel = selectedChildren.includes(c);
-              return (
-                <button key={c} onClick={() => toggleChild(c)} style={{
-                  flex:1, padding:14, borderRadius:12, border:`2px solid ${col.accent}`,
-                  background: sel ? col.accent : col.bg,
-                  color: sel ? '#fff' : col.dark,
-                  fontSize:18, fontWeight:700, cursor:'pointer', fontFamily:'Georgia, serif',
-                  transition:'background 0.15s, color 0.15s',
-                }}>{c}</button>
-              );
-            })}
-          </div>
-
-          {/* Custom name input */}
-          <div style={{display:'flex', gap:8, marginBottom:12}}>
-            <input
-              style={{...s.input, marginBottom:0, flex:1}}
-              value={customName}
-              onChange={e => setCustomName(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCustomName(); } }}
-              placeholder="Other reader name…"
-            />
-            <button
-              onClick={addCustomName}
-              disabled={!customName.trim()}
-              style={{
-                padding:'12px 16px', borderRadius:8, background:'#5c6bc0',
-                color:'#fff', border:'none', fontWeight:700, cursor:'pointer',
-                opacity: customName.trim() ? 1 : 0.4, fontFamily:'Georgia, serif', fontSize:15,
-              }}
-            >Add</button>
-          </div>
-
-          {/* Selected reader chips */}
-          {selectedChildren.length > 0 && (
-            <div style={{display:'flex', flexWrap:'wrap', gap:6, marginBottom:20}}>
-              {selectedChildren.map(name => {
-                const col = nameToColors(name);
+          {/* ── Section 1: Who read it? ── */}
+          <div style={s.formSection}>
+            <div style={s.formSectionTitle}>👤 Who Read It?</div>
+            <label style={s.label}>Select Reader</label>
+            <div style={{display:'flex', gap:12, marginBottom:12}}>
+              {CHILDREN.map(c => {
+                const col = nameToColors(c);
+                const sel = selectedChildren.includes(c);
                 return (
-                  <div key={name} style={{
-                    display:'flex', alignItems:'center', gap:6,
-                    background: col.accent, color:'#fff',
-                    borderRadius:20, padding:'5px 8px 5px 14px',
-                    fontSize:14, fontWeight:700,
-                  }}>
-                    {name}
-                    <button onClick={() => toggleChild(name)} style={{
-                      background:'rgba(0,0,0,0.2)', border:'none', color:'#fff',
-                      cursor:'pointer', fontSize:11, borderRadius:10,
-                      width:18, height:18, display:'flex', alignItems:'center',
-                      justifyContent:'center', padding:0, lineHeight:1,
-                    }}>✕</button>
-                  </div>
+                  <button key={c} onClick={() => toggleChild(c)} style={{
+                    flex:1, padding:14, borderRadius:12, border:`2px solid ${col.accent}`,
+                    background: sel ? col.accent : col.bg,
+                    color: sel ? '#fff' : col.dark,
+                    fontSize:18, fontWeight:700, cursor:'pointer', fontFamily:'Georgia, serif',
+                    transition:'background 0.15s, color 0.15s',
+                  }}>{c}</button>
                 );
               })}
             </div>
-          )}
 
-          {/* Title(s) */}
-          <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:16, marginBottom:6}}>
-            <span style={{...s.label, marginTop:0, marginBottom:0}}>
-              {isBulkMode ? `Book Titles (${titleLines.length} detected)` : 'Book Title'}
-            </span>
-            {!isBulkMode && (
-              <label style={{
-                fontSize:13, color:'#5c6bc0', fontWeight:700, cursor:'pointer',
-                display:'flex', alignItems:'center', gap:4,
-                opacity: scanning ? 0.5 : 1,
-              }}>
-                {scanning ? '⏳ Scanning…' : '📷 Scan Cover'}
-                <input
-                  type="file" accept="image/*" capture="environment"
-                  onChange={handleScan} disabled={scanning}
-                  style={{display:'none'}}
-                />
-              </label>
+            {/* Custom name input */}
+            <label style={s.label}>Other Reader</label>
+            <div style={{display:'flex', gap:8, marginBottom:12}}>
+              <input
+                style={{...s.input, marginBottom:0, flex:1}}
+                value={customName}
+                onChange={e => setCustomName(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCustomName(); } }}
+                placeholder="Other reader name…"
+              />
+              <button
+                onClick={addCustomName}
+                disabled={!customName.trim()}
+                style={{
+                  padding:'12px 16px', borderRadius:8, background:'#5c6bc0',
+                  color:'#fff', border:'none', fontWeight:700, cursor:'pointer',
+                  opacity: customName.trim() ? 1 : 0.4, fontFamily:'Georgia, serif', fontSize:15,
+                }}
+              >Add</button>
+            </div>
+
+            {/* Selected reader chips */}
+            {selectedChildren.length > 0 && (
+              <div style={{display:'flex', flexWrap:'wrap', gap:6, marginBottom:4}}>
+                {selectedChildren.map(name => {
+                  const col = nameToColors(name);
+                  return (
+                    <div key={name} style={{
+                      display:'flex', alignItems:'center', gap:6,
+                      background: col.accent, color:'#fff',
+                      borderRadius:20, padding:'5px 8px 5px 14px',
+                      fontSize:14, fontWeight:700,
+                    }}>
+                      {name}
+                      <button onClick={() => toggleChild(name)} style={{
+                        background:'rgba(0,0,0,0.2)', border:'none', color:'#fff',
+                        cursor:'pointer', fontSize:11, borderRadius:10,
+                        width:18, height:18, display:'flex', alignItems:'center',
+                        justifyContent:'center', padding:0, lineHeight:1,
+                      }}>✕</button>
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </div>
-          <textarea
-            style={{
-              ...s.input,
-              minHeight: isBulkMode ? 130 : 48,
-              resize:'vertical',
-              fontFamily:'Georgia, serif',
-              lineHeight:1.5,
-            }}
-            value={titles}
-            onChange={e => setTitles(e.target.value)}
-            placeholder={'The Wild Robot\nCharlotte\'s Web\nHarry Potter…'}
-            rows={isBulkMode ? 5 : 2}
-          />
 
-          {isBulkMode && (
-            <div style={{
-              color:'#3949ab', fontSize:13, marginBottom:12,
-              padding:'8px 12px', background:'#e8eaf6', borderRadius:8,
-            }}>
-              📚 <strong>Bulk mode</strong> — {titleLines.length} books
-              {selectedChildren.length > 1 ? ` × ${selectedChildren.length} readers` : ''}
-              {!pages ? ' — page counts auto-looked up for each' : ` — all using ${pages} pages`}
+          {/* ── Section 2: Book Title & Author ── */}
+          <div style={s.formSection}>
+            <div style={s.formSectionTitle}>📖 Book Title &amp; Author</div>
+
+            {/* Title(s) */}
+            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6}}>
+              <span style={{...s.label, marginTop:0, marginBottom:0}}>
+                {isBulkMode ? `Book Titles (${titleLines.length} detected)` : 'Book Title'}
+              </span>
+              {!isBulkMode && (
+                <label style={{
+                  fontSize:13, color:'#5c6bc0', fontWeight:700, cursor:'pointer',
+                  display:'flex', alignItems:'center', gap:4,
+                  opacity: scanning ? 0.5 : 1,
+                }}>
+                  {scanning ? '⏳ Scanning…' : '📷 Scan Cover'}
+                  <input
+                    type="file" accept="image/*" capture="environment"
+                    onChange={handleScan} disabled={scanning}
+                    style={{display:'none'}}
+                  />
+                </label>
+              )}
             </div>
-          )}
+            <textarea
+              style={{
+                ...s.input,
+                minHeight: isBulkMode ? 130 : 48,
+                resize:'vertical',
+                fontFamily:'Georgia, serif',
+                lineHeight:1.5,
+              }}
+              value={titles}
+              onChange={e => setTitles(e.target.value)}
+              placeholder={isBulkMode ? 'The Wild Robot\nCharlotte\'s Web\nHarry Potter…' : 'Enter Book Title Here'}
+              rows={isBulkMode ? 5 : 2}
+            />
 
-          {/* Author (single mode only) */}
-          {!isBulkMode && (
-            <>
-              <label style={s.label}>Author (optional)</label>
-              <input style={s.input} value={author} onChange={e => setAuthor(e.target.value)}
-                placeholder="Peter Brown" />
-
-              <button onClick={handleLookup} disabled={looking || !titles.trim()} style={{
-                ...s.lookupBtn, opacity: (!titles.trim() || looking) ? 0.5 : 1
+            {isBulkMode && (
+              <div style={{
+                color:'#3949ab', fontSize:13, marginBottom:12,
+                padding:'8px 12px', background:'#e8eaf6', borderRadius:8,
               }}>
-                {looking ? 'Looking up…' : '🔍 Look Up Page Count'}
-              </button>
-              {lookupError && <div style={s.error}>Lookup failed: {lookupError}<br/><small>You can still enter pages manually below.</small></div>}
-            </>
-          )}
+                📚 <strong>Bulk mode</strong> — {titleLines.length} books
+                {selectedChildren.length > 1 ? ` × ${selectedChildren.length} readers` : ''}
+                {!pages ? ' — page counts auto-looked up for each' : ` — all using ${pages} pages`}
+              </div>
+            )}
 
-          {/* Pages */}
-          <label style={s.label}>
-            {isBulkMode ? 'Pages (optional — applies to all, or leave blank to auto-lookup)' : 'Pages'}
-          </label>
-          <input
-            style={s.input}
-            value={pages}
-            onChange={e => setPages(e.target.value)}
-            placeholder={isBulkMode ? 'Leave blank to auto-lookup each' : '278'}
-            type="number"
-            inputMode="numeric"
-          />
+            {/* Author (single mode only) */}
+            {!isBulkMode && (
+              <>
+                <label style={s.label}>Author (optional)</label>
+                <input style={s.input} value={author} onChange={e => setAuthor(e.target.value)}
+                  placeholder="Enter Author Name Here Optionally or hit look up" />
+              </>
+            )}
+          </div>
 
-          {/* Words per page */}
-          <label style={s.label}>Words per Page</label>
-          <input
-            style={s.input}
-            value={wpp}
-            onChange={e => { setWpp(e.target.value); setWppEdited(true); }}
-            placeholder={pages ? String(autoWpp(Number(pages))) : '200'}
-            type="number"
-            inputMode="numeric"
-          />
-          <div style={s.hint}>
-            {pages && wpp
-              ? `~${estimateWords(Number(pages), Number(wpp)).toLocaleString()} estimated words`
-              : pages
-              ? `~${estimateWords(Number(pages)).toLocaleString()} estimated words (auto)`
-              : 'Auto-filled when pages are entered'}
+          {/* ── Section 3: Look Up & Page Details ── */}
+          <div style={s.formSection}>
+            <div style={s.formSectionTitle}>🔍 Pages &amp; Word Estimate</div>
+
+            {/* Lookup button (single mode only) */}
+            {!isBulkMode && (
+              <>
+                <button onClick={handleLookup} disabled={looking || !titles.trim()} style={{
+                  ...s.lookupBtn, opacity: (!titles.trim() || looking) ? 0.5 : 1, marginTop:0
+                }}>
+                  {looking ? 'Looking up…' : '🔍 Look Up Author, Page, and Estimate Words Per Page'}
+                </button>
+                {lookupError && <div style={s.error}>Lookup failed: {lookupError}<br/><small>You can still enter pages manually below.</small></div>}
+              </>
+            )}
+
+            {/* Pages */}
+            <label style={s.label}>
+              {isBulkMode ? 'Pages (optional — applies to all, or leave blank to auto-lookup)' : 'Pages'}
+            </label>
+            <input
+              style={s.input}
+              value={pages}
+              onChange={e => setPages(e.target.value)}
+              placeholder={isBulkMode ? 'Leave blank to auto-lookup each' : 'Enter Page Count Here'}
+              type="number"
+              inputMode="numeric"
+            />
+
+            {/* Words per page */}
+            <label style={s.label}>Words per Page</label>
+            <input
+              style={s.input}
+              value={wpp}
+              onChange={e => { setWpp(e.target.value); setWppEdited(true); }}
+              placeholder="Enter Words Per Page Here"
+              type="number"
+              inputMode="numeric"
+            />
+            <div style={s.hint}>
+              {pages && wpp
+                ? `~${estimateWords(Number(pages), Number(wpp)).toLocaleString()} estimated words`
+                : pages
+                ? `~${estimateWords(Number(pages)).toLocaleString()} estimated words (auto)`
+                : 'Auto-filled when pages are entered'}
+            </div>
           </div>
 
           {saveError && <div style={s.error}>{saveError}</div>}
@@ -897,9 +916,9 @@ export default function Home() {
                 ['✍️', stats.words >= 1000 ? (stats.words/1000).toFixed(0)+'K' : String(stats.words), 'Words'],
               ].map(([icon, val, label]) => (
                 <div key={label} style={{flex:1, background:col.bg, border:`1px solid ${col.accent}`, borderRadius:10, padding:'10px 6px', textAlign:'center'}}>
-                  <div style={{fontSize:20}}>{icon}</div>
-                  <div style={{fontSize:18, fontWeight:700, color:col.dark}}>{val}</div>
-                  <div style={{fontSize:10, color:'#888', textTransform:'uppercase', letterSpacing:0.5}}>{label}</div>
+                  <div style={{fontSize:26}}>{icon}</div>
+                  <div style={{fontSize:24, fontWeight:700, color:col.dark}}>{val}</div>
+                  <div style={{fontSize:13, color:'#888', textTransform:'uppercase', letterSpacing:0.5}}>{label}</div>
                 </div>
               ))}
             </div>
@@ -1077,9 +1096,9 @@ export default function Home() {
             <div key={c} onClick={() => openReaderProfile(c)} style={{flex:'1 1 140px', background:col.bg, border:`2px solid ${col.accent}`, borderRadius:14, padding:14, cursor:'pointer'}}>
               <div style={{fontSize:20, fontWeight:700, color:col.dark, marginBottom:8}}>{c}</div>
               {[['Books', t.count], ['Pages', t.pages.toLocaleString()], ['~Words', t.words.toLocaleString()]].map(([label, val]) => (
-                <div key={label} style={{display:'flex', justifyContent:'space-between', marginBottom:4}}>
-                  <span style={{fontSize:12, color:'#888', textTransform:'uppercase'}}>{label}</span>
-                  <span style={{fontSize:16, fontWeight:700, color:col.accent}}>{val}</span>
+                <div key={label} style={{display:'flex', justifyContent:'space-between', marginBottom:6}}>
+                  <span style={{fontSize:15, color:'#888', textTransform:'uppercase', fontWeight:600}}>{label}</span>
+                  <span style={{fontSize:20, fontWeight:700, color:col.accent}}>{val}</span>
                 </div>
               ))}
               <div style={{fontSize:11, color:col.accent, marginTop:6, textAlign:'right', opacity:0.7}}>tap for profile →</div>
@@ -1136,7 +1155,9 @@ const s = {
   back: { fontSize:14, padding:'6px 12px', borderRadius:6, border:'1px solid #ccc', background:'#f5f5f5', cursor:'pointer' },
   testBtn: { fontSize:12, padding:'4px 10px', borderRadius:6, border:'1px solid #ccc', background:'#f5f5f5', cursor:'pointer', color:'#666' },
   body: { padding:16 },
-  label: { display:'block', fontSize:12, fontWeight:700, color:'#555', textTransform:'uppercase', letterSpacing:0.5, marginBottom:6, marginTop:16 },
+  label: { display:'block', fontSize:12, fontWeight:700, color:'#555', textTransform:'uppercase', letterSpacing:0.5, marginBottom:6, marginTop:12 },
+  formSection: { background:'#fff', border:'1px solid #e0d8cc', borderRadius:14, padding:'14px 14px 6px', marginBottom:16, boxShadow:'0 1px 3px rgba(0,0,0,0.05)' },
+  formSectionTitle: { fontSize:15, fontWeight:800, color:'#3d2b1f', marginBottom:10, paddingBottom:8, borderBottom:'1px solid #ede8de', letterSpacing:0.2 },
   input: { width:'100%', padding:'12px', borderRadius:8, border:'1px solid #ddd', fontSize:16, fontFamily:'Georgia, serif', boxSizing:'border-box', marginBottom:4 },
   lookupBtn: { width:'100%', padding:12, marginTop:8, borderRadius:8, background:'#5c6bc0', color:'#fff', border:'none', fontSize:15, fontWeight:700, cursor:'pointer', fontFamily:'Georgia, serif' },
   saveBtn: { width:'100%', padding:16, marginTop:16, borderRadius:12, background:'#2e7d32', color:'#fff', border:'none', fontSize:17, fontWeight:700, cursor:'pointer', fontFamily:'Georgia, serif' },
