@@ -1124,7 +1124,6 @@ export default function Home() {
             })
         }
       </div>
-      <div style={{textAlign:'center', padding:'8px 0 16px', color:'#ccc', fontSize:10}}>v2.1</div>
     </div>
   );
 }
