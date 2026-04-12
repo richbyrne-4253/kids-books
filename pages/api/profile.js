@@ -42,7 +42,8 @@ Return ONLY a raw JSON object:
       "name": "Series or Author name",
       "type": "series",
       "count": 3,
-      "readingLevel": "Ages 7-10"
+      "readingLevel": "Ages 7-10",
+      "books": ["Exact Title 1", "Exact Title 2", "Exact Title 3"]
     }
   ],
   "suggestions": [
@@ -60,6 +61,7 @@ Rules:
 - For authors of standalone books (not part of a grouped series), create a group by author name, type="author"
 - readingLevel must be exactly one of: "Ages 3-6", "Ages 5-7", "Ages 6-8", "Ages 7-10", "Ages 8-12", "Ages 12+", "Adult"
 - Sort groups by count descending, then alphabetically
+- The "books" array must contain the exact titles from the input list that belong to this group
 - Return exactly 3 suggestions of books NOT already in the list, matching the reader's level and interests
 - Keep "why" to 1 concise sentence`
         }],
