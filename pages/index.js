@@ -98,6 +98,8 @@ export default function Home() {
   const [saveError, setSaveError] = useState('');
   const [wpp, setWpp] = useState('');
   const [wppEdited, setWppEdited] = useState(false);
+  const [totalWords, setTotalWords] = useState('');
+  const [totalWordsEdited, setTotalWordsEdited] = useState(false);
   const [loading, setLoading] = useState(true);
   const [syncError, setSyncError] = useState('');
   const [localBooks, setLocalBooks] = useState([]);
@@ -147,6 +149,17 @@ export default function Home() {
       setWpp(String(autoWpp(Number(pages))));
     }
   }, [pages, wppEdited]);
+
+  // Auto-derive WPP from total words when user fills in that field
+  useEffect(() => {
+    if (!totalWordsEdited) return;
+    const tw = Number(totalWords);
+    const p = Number(pages);
+    if (totalWords && !isNaN(tw) && tw > 0 && pages && !isNaN(p) && p > 0) {
+      setWpp(String(Math.round(tw / p)));
+      setWppEdited(true);
+    }
+  }, [totalWords, pages, totalWordsEdited]);
 
   // Derived
   const titleLines = titles.split('\n').map(t => t.trim()).filter(Boolean);
@@ -261,15 +274,17 @@ export default function Home() {
     if (!pages || isNaN(Number(pages)) || Number(pages) <= 0) return setSaveError('Enter a valid page count');
 
     const now = Date.now();
+    const explicitWords = totalWords && !isNaN(Number(totalWords)) && Number(totalWords) > 0 ? Number(totalWords) : null;
     const effectiveWpp = wpp && !isNaN(Number(wpp)) && Number(wpp) > 0 ? Number(wpp) : undefined;
+    const finalWpp = explicitWords ? Math.round(explicitWords / Number(pages)) : effectiveWpp || autoWpp(Number(pages));
     const newBooks = selectedChildren.map((child, i) => ({
       id: now + i,
       child,
       title: titles.trim(),
       author: author.trim(),
       pages: Number(pages),
-      wpp: effectiveWpp || autoWpp(Number(pages)),
-      words: estimateWords(Number(pages), effectiveWpp),
+      wpp: finalWpp,
+      words: explicitWords || estimateWords(Number(pages), effectiveWpp),
       date: new Date().toISOString().split('T')[0],
     }));
 
@@ -313,7 +328,9 @@ export default function Home() {
         }
       }
 
+      const explicitWordsBulk = totalWords && !isNaN(Number(totalWords)) && Number(totalWords) > 0 ? Number(totalWords) : null;
       const effectiveWpp = wpp && !isNaN(Number(wpp)) && Number(wpp) > 0 ? Number(wpp) : undefined;
+      const finalWppBulk = explicitWordsBulk && bookPages > 0 ? Math.round(explicitWordsBulk / bookPages) : effectiveWpp || autoWpp(bookPages);
       for (const child of selectedChildren) {
         newBooks.push({
           id: idCounter++,
@@ -321,8 +338,8 @@ export default function Home() {
           title: bookTitle,
           author: bookAuthor,
           pages: bookPages,
-          wpp: effectiveWpp || autoWpp(bookPages),
-          words: estimateWords(bookPages, effectiveWpp),
+          wpp: finalWppBulk,
+          words: explicitWordsBulk || estimateWords(bookPages, effectiveWpp),
           date: new Date().toISOString().split('T')[0],
         });
       }
@@ -356,15 +373,17 @@ export default function Home() {
     if (!titles.trim()) return setSaveError('Enter a title');
     if (!pages || isNaN(Number(pages)) || Number(pages) <= 0) return setSaveError('Enter a valid page count');
 
+    const explicitWordsEdit = totalWords && !isNaN(Number(totalWords)) && Number(totalWords) > 0 ? Number(totalWords) : null;
     const effectiveWpp = wpp && !isNaN(Number(wpp)) && Number(wpp) > 0 ? Number(wpp) : undefined;
+    const finalWppEdit = explicitWordsEdit ? Math.round(explicitWordsEdit / Number(pages)) : effectiveWpp || autoWpp(Number(pages));
     const updatedBook = {
       ...editingBook,
       child: selectedChildren[0],
       title: titles.trim(),
       author: author.trim(),
       pages: Number(pages),
-      wpp: effectiveWpp || autoWpp(Number(pages)),
-      words: estimateWords(Number(pages), effectiveWpp),
+      wpp: finalWppEdit,
+      words: explicitWordsEdit || estimateWords(Number(pages), effectiveWpp),
     };
 
     try {
@@ -380,6 +399,7 @@ export default function Home() {
     setSelectedChildren([]); setCustomName('');
     setTitles(''); setAuthor(''); setPages('');
     setWpp(''); setWppEdited(false);
+    setTotalWords(''); setTotalWordsEdited(false);
     setLookupError(''); setSaveError('');
     setLooking(false); setBulkProcessing(false); setBulkProgress(null);
   }
@@ -592,6 +612,21 @@ export default function Home() {
             {pages && wpp
               ? `~${estimateWords(Number(pages), Number(wpp)).toLocaleString()} estimated words`
               : pages ? `~${estimateWords(Number(pages)).toLocaleString()} estimated words` : ''}
+          </div>
+
+          {/* Total Words (optional override) */}
+          <label style={s.label}>Total Words (optional)</label>
+          <input
+            style={s.input}
+            value={totalWords}
+            onChange={e => { setTotalWords(e.target.value); setTotalWordsEdited(true); }}
+            type="number" inputMode="numeric"
+            placeholder={pages && wpp ? String(estimateWords(Number(pages), Number(wpp))) : 'Leave blank to use pages × wpp'}
+          />
+          <div style={s.hint}>
+            {totalWords && pages && Number(pages) > 0
+              ? `→ wpp = ${Math.round(Number(totalWords) / Number(pages))}`
+              : 'If filled, overrides pages × wpp'}
           </div>
 
           {saveError && <div style={s.error}>{saveError}</div>}
@@ -854,6 +889,25 @@ export default function Home() {
                 ? `~${estimateWords(Number(pages)).toLocaleString()} estimated words (auto)`
                 : 'Auto-filled when pages are entered'}
             </div>
+
+            {/* Total Words (optional override) */}
+            {!isBulkMode && (
+              <>
+                <label style={s.label}>Total Words (optional)</label>
+                <input
+                  style={s.input}
+                  value={totalWords}
+                  onChange={e => { setTotalWords(e.target.value); setTotalWordsEdited(true); }}
+                  type="number" inputMode="numeric"
+                  placeholder={pages && wpp ? String(estimateWords(Number(pages), Number(wpp))) : 'Leave blank to use pages × wpp'}
+                />
+                <div style={s.hint}>
+                  {totalWords && pages && Number(pages) > 0
+                    ? `→ wpp = ${Math.round(Number(totalWords) / Number(pages))}`
+                    : 'If filled, overrides pages × wpp'}
+                </div>
+              </>
+            )}
           </div>
 
           {saveError && <div style={s.error}>{saveError}</div>}
