@@ -1137,7 +1137,7 @@ export default function Home() {
           <button style={s.testBtn} onClick={handleExport} title="Download backup">💾</button>
           <button style={s.testBtn} onClick={handleRecalculate} title="Recalculate word counts">🔢</button>
           <button style={s.testBtn} onClick={() => { loadTrash(); setView('trash'); }} title="Trash">🗑️</button>
-          <span style={{fontSize:10, color:'#bbb', alignSelf:'center', paddingRight:2}}>v2.6</span>
+          <span style={{fontSize:10, color:'#bbb', alignSelf:'center', paddingRight:2}}>v2.7</span>
         </div>
       </header>
 
