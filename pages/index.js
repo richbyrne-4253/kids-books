@@ -927,7 +927,7 @@ export default function Home() {
               }}>
                 <div style={{fontSize:15, fontWeight:700, color:'#2d1f14'}}>{book.title}</div>
                 {book.author && <div style={{fontSize:13, color:'#888'}}>{book.author}</div>}
-                <div style={{fontSize:12, color:'#aaa', marginTop:4}}>
+                <div style={{fontSize:15, color:'#aaa', marginTop:4}}>
                   {book.date} · {book.pages} pages · ~{book.words?.toLocaleString()} words
                 </div>
               </div>
@@ -1072,7 +1072,7 @@ export default function Home() {
           <button style={s.testBtn} onClick={handleExport} title="Download backup">💾</button>
           <button style={s.testBtn} onClick={handleRecalculate} title="Recalculate word counts">🔢</button>
           <button style={s.testBtn} onClick={() => { loadTrash(); setView('trash'); }} title="Trash">🗑️</button>
-          <span style={{fontSize:10, color:'#bbb', alignSelf:'center', paddingRight:2}}>v2.3</span>
+          <span style={{fontSize:10, color:'#bbb', alignSelf:'center', paddingRight:2}}>v2.4</span>
         </div>
       </header>
 
@@ -1119,7 +1119,7 @@ export default function Home() {
                   <div style={{flex:1}} onClick={() => startEdit(book)}>
                     <div style={{fontSize:16, fontWeight:700, color:'#2d1f14'}}>{book.title}</div>
                     {book.author && <div style={{fontSize:13, color:'#888'}}>{book.author}</div>}
-                    <div style={{fontSize:12, color:'#aaa', marginTop:2}}>
+                    <div style={{fontSize:15, color:'#aaa', marginTop:2}}>
                       <span style={{background:col.accent, color:'#fff', borderRadius:4, padding:'1px 6px', marginRight:4}}>{book.child}</span>
                       {book.date} · {book.pages} pages · {book.wpp || autoWpp(book.pages)} wpp · ~{book.words?.toLocaleString()} words
                     </div>
