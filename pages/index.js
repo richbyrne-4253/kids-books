@@ -112,6 +112,7 @@ export default function Home() {
   const [profileData, setProfileData] = useState(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState('');
+  const [expandedGroup, setExpandedGroup] = useState(null);
 
   useEffect(() => {
     // Check for old localStorage books to offer migration
@@ -438,13 +439,32 @@ export default function Home() {
     } catch (e) { setSyncError('Recalculate failed: ' + e.message); }
   }
 
+  function profileCacheKey(name, readerBooks) {
+    const count = readerBooks.length;
+    const latestId = readerBooks[0]?.id || 0;
+    return `kb_profile_v2_${name}_${count}_${latestId}`;
+  }
+
   async function openReaderProfile(name) {
     setProfileReader(name);
     setProfileData(null);
     setProfileError('');
-    setProfileLoading(true);
+    setExpandedGroup(null);
     setView('reader');
     const readerBooks = books.filter(b => b.child === name);
+
+    // Check localStorage cache first
+    const cacheKey = profileCacheKey(name, readerBooks);
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        setProfileData(JSON.parse(cached));
+        setProfileLoading(false);
+        return;
+      }
+    } catch {}
+
+    setProfileLoading(true);
     try {
       const res = await fetch('/api/profile', {
         method: 'POST',
@@ -454,6 +474,14 @@ export default function Home() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Profile failed');
       setProfileData(data);
+      // Save to cache — clear old keys for this reader first
+      try {
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && k.startsWith(`kb_profile_v2_${name}_`)) { localStorage.removeItem(k); i--; }
+        }
+        localStorage.setItem(cacheKey, JSON.stringify(data));
+      } catch {}
     } catch (e) {
       setProfileError(e.message);
     } finally {
@@ -836,6 +864,72 @@ export default function Home() {
   if (view === 'reader' && profileReader) {
     const col = nameToColors(profileReader);
     const t = totals(profileReader);
+    const readerBooks = books.filter(b => b.child === profileReader);
+
+    function groupStats(g) {
+      const titles = new Set((g.books || []).map(t => t.trim().toLowerCase()));
+      const matched = readerBooks.filter(b => titles.has((b.title || '').trim().toLowerCase()));
+      return {
+        pages: matched.reduce((s, b) => s + (b.pages || 0), 0),
+        words: matched.reduce((s, b) => s + (b.words || 0), 0),
+        bookList: matched,
+      };
+    }
+
+    // ── Expanded group sub-view ──────────────────────────────────────
+    if (expandedGroup) {
+      const stats = groupStats(expandedGroup);
+      const sorted = [...stats.bookList].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+      return (
+        <div style={s.page}>
+          <Head><title>{expandedGroup.name}</title></Head>
+          <header style={s.header}>
+            <button style={s.back} onClick={() => setExpandedGroup(null)}>← Back</button>
+            <span style={s.headerTitle}>{expandedGroup.name}</span>
+            <div style={{width:60}}/>
+          </header>
+          <div style={s.body}>
+            {/* Summary stats */}
+            <div style={{display:'flex', gap:8, marginBottom:20}}>
+              {[
+                ['📚', expandedGroup.count, 'Books'],
+                ['📄', stats.pages.toLocaleString(), 'Pages'],
+                ['✍️', stats.words >= 1000 ? (stats.words/1000).toFixed(0)+'K' : String(stats.words), 'Words'],
+              ].map(([icon, val, label]) => (
+                <div key={label} style={{flex:1, background:col.bg, border:`1px solid ${col.accent}`, borderRadius:10, padding:'10px 6px', textAlign:'center'}}>
+                  <div style={{fontSize:20}}>{icon}</div>
+                  <div style={{fontSize:18, fontWeight:700, color:col.dark}}>{val}</div>
+                  <div style={{fontSize:10, color:'#888', textTransform:'uppercase', letterSpacing:0.5}}>{label}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{marginBottom:12}}>
+              <span style={{fontSize:11, background:col.bg, color:col.dark, borderRadius:10, padding:'3px 10px', border:`1px solid ${col.accent}`, fontWeight:700}}>
+                {expandedGroup.type === 'series' ? '📖 Series' : '✍️ Author'} · {expandedGroup.readingLevel}
+              </span>
+            </div>
+            {sorted.length === 0 && (
+              <div style={{color:'#aaa', fontSize:14, textAlign:'center', padding:'20px 0'}}>No matched books found</div>
+            )}
+            {sorted.map(book => (
+              <div key={book.id} style={{
+                padding:'12px 14px', marginBottom:8, borderRadius:10,
+                background:'#fff', border:'1px solid #e8e0d8',
+                borderLeft:`4px solid ${col.accent}`,
+              }}>
+                <div style={{fontSize:15, fontWeight:700, color:'#2d1f14'}}>{book.title}</div>
+                {book.author && <div style={{fontSize:13, color:'#888'}}>{book.author}</div>}
+                <div style={{fontSize:12, color:'#aaa', marginTop:4}}>
+                  {book.date} · {book.pages} pages · ~{book.words?.toLocaleString()} words
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // ── Reader profile main view ─────────────────────────────────────
     return (
       <div style={s.page}>
         <Head><title>{profileReader}'s Reading Profile</title></Head>
@@ -870,27 +964,37 @@ export default function Home() {
             <>
               {/* Favorites */}
               <div style={s.sectionLabel}>Favorites</div>
-              {(profileData.groups || []).map((g, i) => (
-                <div key={i} style={{
-                  background:'#fff', border:`1px solid #e8e0d8`, borderRadius:10,
-                  padding:'12px 14px', marginBottom:8,
-                  display:'flex', justifyContent:'space-between', alignItems:'center',
-                  borderLeft:`4px solid ${col.accent}`,
-                }}>
-                  <div>
-                    <div style={{fontSize:15, fontWeight:700, color:'#2d1f14'}}>{g.name}</div>
-                    <div style={{fontSize:12, color:'#aaa', marginTop:2}}>{g.type === 'series' ? '📖 Series' : '✍️ Author'}</div>
+              {(profileData.groups || []).map((g, i) => {
+                const gs = groupStats(g);
+                return (
+                  <div key={i} onClick={() => setExpandedGroup(g)} style={{
+                    background:'#fff', border:`1px solid #e8e0d8`, borderRadius:10,
+                    padding:'12px 14px', marginBottom:8,
+                    borderLeft:`4px solid ${col.accent}`,
+                    cursor:'pointer',
+                  }}>
+                    <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start'}}>
+                      <div style={{flex:1}}>
+                        <div style={{fontSize:15, fontWeight:700, color:'#2d1f14'}}>{g.name}</div>
+                        <div style={{fontSize:12, color:'#aaa', marginTop:2}}>{g.type === 'series' ? '📖 Series' : '✍️ Author'}</div>
+                      </div>
+                      <div style={{textAlign:'right', flexShrink:0, marginLeft:12}}>
+                        <div style={{fontSize:16, fontWeight:700, color:col.accent}}>{g.count} {g.count === 1 ? 'book' : 'books'} ›</div>
+                        <div style={{
+                          fontSize:11, background:col.bg, color:col.dark,
+                          borderRadius:10, padding:'2px 8px', marginTop:4,
+                          display:'inline-block', border:`1px solid ${col.accent}`,
+                        }}>{g.readingLevel}</div>
+                      </div>
+                    </div>
+                    {(gs.pages > 0 || gs.words > 0) && (
+                      <div style={{fontSize:12, color:'#888', marginTop:6}}>
+                        {gs.pages.toLocaleString()} pages · ~{gs.words >= 1000 ? (gs.words/1000).toFixed(0)+'K' : gs.words} words
+                      </div>
+                    )}
                   </div>
-                  <div style={{textAlign:'right', flexShrink:0, marginLeft:12}}>
-                    <div style={{fontSize:16, fontWeight:700, color:col.accent}}>{g.count} {g.count === 1 ? 'book' : 'books'}</div>
-                    <div style={{
-                      fontSize:11, background:col.bg, color:col.dark,
-                      borderRadius:10, padding:'2px 8px', marginTop:4,
-                      display:'inline-block', border:`1px solid ${col.accent}`,
-                    }}>{g.readingLevel}</div>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
 
               {/* Suggestions */}
               <div style={{...s.sectionLabel, marginTop:24}}>What to Read Next</div>
