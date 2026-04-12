@@ -111,9 +111,6 @@ export default function Home() {
   const [bulkProgress, setBulkProgress] = useState(null);
   const [testResults, setTestResults] = useState(null);
   const [profileReader, setProfileReader] = useState(null);
-  const [profileData, setProfileData] = useState(null);
-  const [profileLoading, setProfileLoading] = useState(false);
-  const [profileError, setProfileError] = useState('');
   const [expandedGroup, setExpandedGroup] = useState(null);
 
   useEffect(() => {
@@ -464,54 +461,23 @@ export default function Home() {
     } catch (e) { setSyncError('Recalculate failed: ' + e.message); }
   }
 
-  function profileCacheKey(name, readerBooks) {
-    const count = readerBooks.length;
-    const latestId = readerBooks[0]?.id || 0;
-    return `kb_profile_v2_${name}_${count}_${latestId}`;
+  function buildGroups(readerBooks) {
+    const byAuthor = {};
+    for (const book of readerBooks) {
+      const author = (book.author || 'Unknown').trim();
+      if (!byAuthor[author]) byAuthor[author] = [];
+      byAuthor[author].push(book.title);
+    }
+    return Object.entries(byAuthor)
+      .filter(([, titles]) => titles.length >= 2)
+      .map(([author, titles]) => ({ name: author, type: 'author', count: titles.length, books: titles }))
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
   }
 
-  async function openReaderProfile(name) {
+  function openReaderProfile(name) {
     setProfileReader(name);
-    setProfileData(null);
-    setProfileError('');
     setExpandedGroup(null);
     setView('reader');
-    const readerBooks = books.filter(b => b.child === name);
-
-    // Check localStorage cache first
-    const cacheKey = profileCacheKey(name, readerBooks);
-    try {
-      const cached = localStorage.getItem(cacheKey);
-      if (cached) {
-        setProfileData(JSON.parse(cached));
-        setProfileLoading(false);
-        return;
-      }
-    } catch {}
-
-    setProfileLoading(true);
-    try {
-      const res = await fetch('/api/profile', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reader: name, books: readerBooks.map(b => ({ title: b.title, author: b.author, pages: b.pages })) }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Profile failed');
-      setProfileData(data);
-      // Save to cache — clear old keys for this reader first
-      try {
-        for (let i = 0; i < localStorage.length; i++) {
-          const k = localStorage.key(i);
-          if (k && k.startsWith(`kb_profile_v2_${name}_`)) { localStorage.removeItem(k); i--; }
-        }
-        localStorage.setItem(cacheKey, JSON.stringify(data));
-      } catch {}
-    } catch (e) {
-      setProfileError(e.message);
-    } finally {
-      setProfileLoading(false);
-    }
   }
 
   function handleExport() {
@@ -972,7 +938,7 @@ export default function Home() {
             </div>
             <div style={{marginBottom:12}}>
               <span style={{fontSize:11, background:col.bg, color:col.dark, borderRadius:10, padding:'3px 10px', border:`1px solid ${col.accent}`, fontWeight:700}}>
-                {expandedGroup.type === 'series' ? '📖 Series' : '✍️ Author'} · {expandedGroup.readingLevel}
+                ✍️ Author
               </span>
             </div>
             {sorted.length === 0 && (
@@ -1007,7 +973,7 @@ export default function Home() {
       <div style={s.page}>
         <Head><title>{profileReader}'s Reading Profile</title></Head>
         <header style={s.header}>
-          <button style={s.back} onClick={() => { setView('home'); setProfileReader(null); setProfileData(null); }}>← Back</button>
+          <button style={s.back} onClick={() => { setView('home'); setProfileReader(null); }}>← Back</button>
           <span style={s.headerTitle}>{profileReader}'s Profile</span>
           <div style={{width:60}}/>
         </header>
@@ -1024,20 +990,11 @@ export default function Home() {
             ))}
           </div>
 
-          {profileLoading && (
-            <div style={{textAlign:'center', padding:40, color:'#888'}}>
-              <div style={{fontSize:36, marginBottom:8}}>🔍</div>
-              <div>Analyzing reading history…</div>
-            </div>
-          )}
-
-          {profileError && <div style={s.error}>{profileError}</div>}
-
-          {profileData && (
+          {/* Favorites */}
+          {buildGroups(readerBooks).length > 0 && (
             <>
-              {/* Favorites */}
               <div style={s.sectionLabel}>Favorites</div>
-              {(profileData.groups || []).map((g, i) => {
+              {buildGroups(readerBooks).map((g, i) => {
                 const gs = groupStats(g);
                 return (
                   <div key={i} onClick={() => setExpandedGroup(g)} style={{
@@ -1049,15 +1006,10 @@ export default function Home() {
                     <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start'}}>
                       <div style={{flex:1}}>
                         <div style={{fontSize:15, fontWeight:700, color:'#2d1f14'}}>{g.name}</div>
-                        <div style={{fontSize:12, color:'#aaa', marginTop:2}}>{g.type === 'series' ? '📖 Series' : '✍️ Author'}</div>
+                        <div style={{fontSize:12, color:'#aaa', marginTop:2}}>✍️ Author</div>
                       </div>
                       <div style={{textAlign:'right', flexShrink:0, marginLeft:12}}>
                         <div style={{fontSize:16, fontWeight:700, color:col.accent}}>{g.count} {g.count === 1 ? 'book' : 'books'} ›</div>
-                        <div style={{
-                          fontSize:11, background:col.bg, color:col.dark,
-                          borderRadius:10, padding:'2px 8px', marginTop:4,
-                          display:'inline-block', border:`1px solid ${col.accent}`,
-                        }}>{g.readingLevel}</div>
                       </div>
                     </div>
                     {(gs.pages > 0 || gs.words > 0) && (
@@ -1068,30 +1020,6 @@ export default function Home() {
                   </div>
                 );
               })}
-
-              {/* Suggestions */}
-              <div style={{...s.sectionLabel, marginTop:24}}>What to Read Next</div>
-              {(profileData.suggestions || []).map((suggestion, i) => (
-                <div key={i} style={{
-                  background:col.bg, border:`1px solid ${col.accent}`,
-                  borderRadius:10, padding:'12px 14px', marginBottom:8,
-                }}>
-                  <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start'}}>
-                    <div style={{flex:1}}>
-                      <div style={{fontSize:15, fontWeight:700, color:'#2d1f14'}}>{suggestion.title}</div>
-                      <div style={{fontSize:13, color:'#888'}}>{suggestion.author}</div>
-                    </div>
-                    <div style={{
-                      fontSize:11, background:'#fff', color:col.dark,
-                      borderRadius:10, padding:'2px 8px', marginLeft:8,
-                      border:`1px solid ${col.accent}`, whiteSpace:'nowrap', flexShrink:0,
-                    }}>{suggestion.readingLevel}</div>
-                  </div>
-                  {suggestion.why && (
-                    <div style={{fontSize:13, color:'#666', marginTop:6, fontStyle:'italic'}}>"{suggestion.why}"</div>
-                  )}
-                </div>
-              ))}
             </>
           )}
         </div>
@@ -1136,7 +1064,7 @@ export default function Home() {
         <div style={{display:'flex', gap:6}}>
           <button style={s.testBtn} onClick={handleExport} title="Download backup">💾</button>
           <button style={s.testBtn} onClick={() => { loadTrash(); setView('trash'); }} title="Trash">🗑️</button>
-          <span style={{fontSize:10, color:'#bbb', alignSelf:'center', paddingRight:2}}>v2.8</span>
+          <span style={{fontSize:10, color:'#bbb', alignSelf:'center', paddingRight:2}}>v2.9</span>
         </div>
       </header>
 
