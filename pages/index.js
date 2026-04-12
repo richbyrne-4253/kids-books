@@ -928,7 +928,7 @@ export default function Home() {
                 <div style={{fontSize:15, fontWeight:700, color:'#2d1f14'}}>{book.title}</div>
                 {book.author && <div style={{fontSize:13, color:'#888'}}>{book.author}</div>}
                 <div style={{fontSize:15, color:'#aaa', marginTop:4}}>
-                  {book.date} · {book.pages} pages · ~{book.words?.toLocaleString()} words
+                  {book.date} · {book.pages} pages · <span style={{color:'#2d1f14', fontWeight:700}}>~{book.words?.toLocaleString()} words</span>
                 </div>
               </div>
             ))}
@@ -996,8 +996,8 @@ export default function Home() {
                       </div>
                     </div>
                     {(gs.pages > 0 || gs.words > 0) && (
-                      <div style={{fontSize:12, color:'#888', marginTop:6}}>
-                        {gs.pages.toLocaleString()} pages · ~{gs.words >= 1000 ? (gs.words/1000).toFixed(0)+'K' : gs.words} words
+                      <div style={{fontSize:15, color:'#888', marginTop:6}}>
+                        {gs.pages.toLocaleString()} pages · <span style={{color:'#2d1f14', fontWeight:700}}>~{gs.words >= 1000 ? (gs.words/1000).toFixed(0)+'K' : gs.words} words</span>
                       </div>
                     )}
                   </div>
@@ -1072,7 +1072,7 @@ export default function Home() {
           <button style={s.testBtn} onClick={handleExport} title="Download backup">💾</button>
           <button style={s.testBtn} onClick={handleRecalculate} title="Recalculate word counts">🔢</button>
           <button style={s.testBtn} onClick={() => { loadTrash(); setView('trash'); }} title="Trash">🗑️</button>
-          <span style={{fontSize:10, color:'#bbb', alignSelf:'center', paddingRight:2}}>v2.4</span>
+          <span style={{fontSize:10, color:'#bbb', alignSelf:'center', paddingRight:2}}>v2.5</span>
         </div>
       </header>
 
@@ -1121,7 +1121,7 @@ export default function Home() {
                     {book.author && <div style={{fontSize:13, color:'#888'}}>{book.author}</div>}
                     <div style={{fontSize:15, color:'#aaa', marginTop:2}}>
                       <span style={{background:col.accent, color:'#fff', borderRadius:4, padding:'1px 6px', marginRight:4}}>{book.child}</span>
-                      {book.date} · {book.pages} pages · {book.wpp || autoWpp(book.pages)} wpp · ~{book.words?.toLocaleString()} words
+                      {book.date} · {book.pages} pages · {book.wpp || autoWpp(book.pages)} wpp · <span style={{color:'#2d1f14', fontWeight:700}}>~{book.words?.toLocaleString()} words</span>
                     </div>
                     <div style={{fontSize:11, color:'#bbb', marginTop:2}}>tap to edit</div>
                   </div>
