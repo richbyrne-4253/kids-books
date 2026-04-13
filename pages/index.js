@@ -1022,6 +1022,69 @@ export default function Home() {
               })}
             </>
           )}
+
+          {/* All other books (not in Favorites groups) */}
+          {(() => {
+            const favoriteGroups = buildGroups(readerBooks);
+            const favTitles = new Set(favoriteGroups.flatMap(g => g.books.map(t => t.trim().toLowerCase())));
+            const ungrouped = readerBooks.filter(b => !favTitles.has((b.title || '').trim().toLowerCase()));
+            if (ungrouped.length === 0) return null;
+
+            const isUnknown = b => !b.author || b.author.trim() === '' || b.author.trim().toLowerCase() === 'unknown';
+            const unknownBooks = ungrouped.filter(isUnknown);
+            const singleBooks = ungrouped.filter(b => !isUnknown(b));
+            const sortedSingles = [...singleBooks].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+
+            const unknownGroup = unknownBooks.length > 0 ? {
+              name: 'Unknown Author',
+              type: 'author',
+              count: unknownBooks.length,
+              books: unknownBooks.map(b => b.title),
+            } : null;
+
+            return (
+              <>
+                <div style={s.sectionLabel}>All Books</div>
+                {unknownGroup && (
+                  <div onClick={() => setExpandedGroup(unknownGroup)} style={{
+                    background:'#fff', border:`1px solid #e8e0d8`, borderRadius:10,
+                    padding:'12px 14px', marginBottom:8,
+                    borderLeft:`4px solid ${col.accent}`,
+                    cursor:'pointer',
+                  }}>
+                    <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start'}}>
+                      <div style={{flex:1}}>
+                        <div style={{fontSize:15, fontWeight:700, color:'#2d1f14'}}>Unknown Author</div>
+                        <div style={{fontSize:12, color:'#aaa', marginTop:2}}>✍️ Author</div>
+                      </div>
+                      <div style={{textAlign:'right', flexShrink:0, marginLeft:12}}>
+                        <div style={{fontSize:16, fontWeight:700, color:col.accent}}>{unknownGroup.count} {unknownGroup.count === 1 ? 'book' : 'books'} ›</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {sortedSingles.map(book => {
+                  const bookWpp = book.wpp || autoWpp(book.pages || 0);
+                  const bookWords = book.words || estimateWords(book.pages || 0, bookWpp);
+                  return (
+                    <div key={book.id} onClick={() => startEdit(book)} style={{
+                      padding:'12px 14px', marginBottom:8, borderRadius:10,
+                      background:'#fff', border:'1px solid #e8e0d8',
+                      borderLeft:`4px solid ${col.accent}`,
+                      cursor:'pointer',
+                    }}>
+                      <div style={{fontSize:15, fontWeight:700, color:'#2d1f14'}}>{book.title}</div>
+                      <div style={{fontSize:13, color:'#888'}}>{book.author}</div>
+                      <div style={{fontSize:15, color:'#aaa', marginTop:4}}>
+                        {book.date} · {book.pages} pages · {bookWpp} wpp · <span style={{color:'#2d1f14', fontWeight:700}}>{bookWords.toLocaleString()} words</span>
+                      </div>
+                      <div style={{fontSize:11, color:'#bbb', marginTop:2}}>tap to edit</div>
+                    </div>
+                  );
+                })}
+              </>
+            );
+          })()}
         </div>
       </div>
     );
